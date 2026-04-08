@@ -13,10 +13,11 @@ import java.security.MessageDigest
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class SecureStorageManager @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val encryptionManager: EncryptionManager
 ) {
     companion object {

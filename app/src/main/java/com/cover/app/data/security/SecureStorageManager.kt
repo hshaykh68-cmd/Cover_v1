@@ -1,6 +1,7 @@
 package com.cover.app.data.security
 
 import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -10,7 +11,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class SecureStorageManager @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val encryptionManager: EncryptionManager
 ) {
     /**
