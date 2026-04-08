@@ -380,7 +380,7 @@ private fun CalculatorKeypad(
             NumberButton(
                 number = "0",
                 onClick = { onNumberClick("0") },
-                modifier = Modifier.weight(2f)
+                modifier = Modifier.weight(1f)
             )
             KeyButton(
                 text = ".",
@@ -390,6 +390,8 @@ private fun CalculatorKeypad(
                 modifier = Modifier.weight(1f)
             )
             EqualsButton(onClick = onEqualsClick, modifier = Modifier.weight(1f))
+            // Add hidden vault access button (looks like a calculator memory button)
+            VaultAccessButton(onClick = { /* handled via equals with PIN pattern */ }, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -508,6 +510,33 @@ private fun IconKeyButton(
             contentDescription = null,
             tint = contentColor,
             modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
+@Composable
+private fun VaultAccessButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Hidden vault button disguised as calculator memory button
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(CircleShape)
+            .background(Color(0xFF2C2C2E))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "M",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF64D2FF)
         )
     }
 }

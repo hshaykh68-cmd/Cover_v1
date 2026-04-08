@@ -12,6 +12,7 @@ import com.cover.app.presentation.intruder.IntruderLogsScreen
 import com.cover.app.presentation.onboarding.OnboardingScreen
 import com.cover.app.presentation.onboarding.OnboardingViewModel
 import com.cover.app.presentation.premium.PremiumScreen
+import com.cover.app.presentation.settings.SettingsScreen
 import com.cover.app.presentation.vault.VaultScreen
 
 @Composable
@@ -94,7 +95,11 @@ fun AppNavigation(
         }
         
         composable(Screen.Settings.route) {
-            // SettingsScreen will be implemented in later phase
+            SettingsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
         
         composable(Screen.Upgrade.route) {

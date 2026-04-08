@@ -41,6 +41,7 @@ class IntruderCaptureManager @Inject constructor(
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
     private var camera: Camera? = null
+    private var lifecycleOwner: ApplicationLifecycleOwner? = null
 
     private val _captureState = MutableStateFlow<CaptureState>(CaptureState.Idle)
     val captureState: StateFlow<CaptureState> = _captureState.asStateFlow()
@@ -84,10 +85,10 @@ class IntruderCaptureManager @Inject constructor(
             cameraProvider?.unbindAll()
 
             // Use application lifecycle for camera binding
-            val lifecycleOwner = ApplicationLifecycleOwner()
+            lifecycleOwner = ApplicationLifecycleOwner()
 
             camera = cameraProvider?.bindToLifecycle(
-                lifecycleOwner,
+                lifecycleOwner!!,
                 cameraSelector,
                 preview,
                 imageCapture
@@ -170,6 +171,10 @@ class IntruderCaptureManager @Inject constructor(
      * Shutdown camera to free resources
      */
     fun shutdown() {
+        // Destroy lifecycle owner first to properly clean up camera
+        lifecycleOwner?.destroy()
+        lifecycleOwner = null
+        
         cameraProvider?.unbindAll()
         camera = null
         imageCapture = null

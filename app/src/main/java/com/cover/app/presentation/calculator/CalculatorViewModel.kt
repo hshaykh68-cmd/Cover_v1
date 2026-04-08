@@ -206,6 +206,16 @@ class CalculatorViewModel @Inject constructor(
     private fun checkPinPatternBeforeCalculate(): Boolean {
         val buffer = pinBuffer.toString()
         
+        // Check for direct PIN entry: {4-8 digits}=
+        val directPinRegex = Regex("^(\\d{4,8})=\$")
+        val directMatch = directPinRegex.find(buffer)
+        
+        if (directMatch != null) {
+            val pin = directMatch.groupValues[1]
+            handlePinAttempt(pin, isDecoy = false)
+            return true
+        }
+        
         // Check for real vault PIN: {4-8 digits}+0=
         val realPinRegex = Regex("(\\d{4,8})\\+0=\$")
         val realMatch = realPinRegex.find(buffer)

@@ -17,7 +17,6 @@ import com.cover.app.data.remoteconfig.ThemeManager
 import com.cover.app.data.remoteconfig.TutorialManager
 import com.cover.app.data.remoteconfig.InAppMessageManager
 import com.cover.app.data.security.EncryptionManager
-import com.cover.app.data.security.SecureStorageManager
 import com.cover.app.core.util.PerformanceManager
 import dagger.Module
 import dagger.Provides
@@ -96,14 +95,9 @@ object DataModule {
         return EncryptionManager(context)
     }
 
-    @Provides
-    @Singleton
-    fun provideSecureStorageManager(
-        @ApplicationContext context: Context,
-        encryptionManager: EncryptionManager
-    ): SecureStorageManager {
-        return SecureStorageManager(context, encryptionManager)
-    }
+    // Note: SecureDataStore (data.security) has @Inject constructor - Hilt auto-provides it
+    // SecureStorageManager (data.storage) is also auto-injected via @Inject constructor
+    // No @Provides needed for either - prevents binding conflicts
 
     @Provides
     @Singleton

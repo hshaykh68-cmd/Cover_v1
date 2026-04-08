@@ -6,11 +6,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Manager for secure storage of sensitive data
- * Wraps EncryptionManager to provide higher-level storage operations
+ * Manager for secure storage of sensitive data using encrypted preferences.
+ * Wraps EncryptionManager to provide higher-level storage operations.
+ * Renamed from SecureStorageManager to avoid collision with data.storage.SecureStorageManager.
  */
 @Singleton
-class SecureStorageManager @Inject constructor(
+class SecureDataStore @Inject constructor(
     @ApplicationContext private val context: Context,
     private val encryptionManager: EncryptionManager
 ) {

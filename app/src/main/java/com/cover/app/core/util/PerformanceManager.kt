@@ -193,39 +193,6 @@ class PerformanceManager @Inject constructor(
     }
     
     /**
-     * Encrypt file in background with progress callback
-     */
-    suspend fun encryptFileInBackground(
-        sourceFile: File,
-        destinationFile: File,
-        onProgress: (Int) -> Unit
-    ) = withContext(Dispatchers.IO) {
-        val totalBytes = sourceFile.length()
-        var processedBytes = 0L
-        
-        sourceFile.inputStream().buffered().use { input ->
-            destinationFile.outputStream().use { output ->
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    // Process buffer (encryption would happen here)
-                    output.write(buffer, 0, bytesRead)
-                    processedBytes += bytesRead
-                    
-                    // Report progress every 64KB
-                    if (processedBytes % (64 * 1024) == 0L) {
-                        val progress = ((processedBytes * 100) / totalBytes).toInt()
-                        onProgress(progress)
-                    }
-                }
-            }
-        }
-        
-        onProgress(100)
-    }
-    
-    /**
      * Process items in batches to avoid memory pressure
      */
     suspend fun <T> processInBatches(

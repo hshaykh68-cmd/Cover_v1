@@ -44,6 +44,12 @@ class GalleryViewModel @Inject constructor(
     val showUpsell: StateFlow<UpsellTrigger?> = _showUpsell.asStateFlow()
 
     private var importJob: Job? = null
+    private var itemsJob: Job? = null
+    private var premiumJob: Job? = null
+    
+    // Cache premium status as StateFlow to avoid multiple collectors
+    private val premiumStatus = premiumRepository.isPremium()
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     init {
         loadItems()
@@ -61,16 +67,20 @@ class GalleryViewModel @Inject constructor(
 
     fun loadVaultItems(vaultId: String, pin: String) {
         _currentPin.value = pin
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            
-            // Observe premium status from repository
-            premiumRepository.isPremium().collect { isPremium ->
+        
+        // Cancel previous collection jobs to avoid accumulation
+        premiumJob?.cancel()
+        itemsJob?.cancel()
+        
+        // Collect premium status using cached StateFlow
+        premiumJob = viewModelScope.launch {
+            premiumStatus.collect { isPremium ->
                 _state.update { it.copy(isPremium = isPremium) }
             }
         }
         
-        viewModelScope.launch {
+        // Collect vault items with job tracking
+        itemsJob = viewModelScope.launch {
             vaultRepository.getItemsByVault(vaultId)
                 .onStart { _state.update { it.copy(isLoading = true) } }
                 .catch { error ->
@@ -84,6 +94,13 @@ class GalleryViewModel @Inject constructor(
                     }
                 }
         }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        premiumJob?.cancel()
+        itemsJob?.cancel()
+        importJob?.cancel()
     }
 
     fun importMedia(vaultId: String, pin: String, uris: List<Uri>) {

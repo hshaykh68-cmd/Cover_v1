@@ -11,10 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -45,6 +47,10 @@ fun VaultScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle events
+    var showAddDialog by remember { mutableStateOf(false) }
+    var selectedItem by remember { mutableStateOf<HiddenItem?>(null) }
+    var showItemOptions by remember { mutableStateOf(false) }
+    
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -57,9 +63,54 @@ fun VaultScreen(
                 is VaultEvent.NavigateToSettings -> {
                     onNavigateToSettings()
                 }
-                else -> {}
+                is VaultEvent.ShowAddItemDialog -> {
+                    showAddDialog = true
+                }
+                is VaultEvent.OpenItem -> {
+                    // TODO: Navigate to item viewer
+                    snackbarHostState.showSnackbar("Opening ${event.item.originalName}...")
+                }
+                is VaultEvent.ShowItemOptions -> {
+                    selectedItem = event.item
+                    showItemOptions = true
+                }
             }
         }
+    }
+    
+    // Add Item Dialog
+    if (showAddDialog) {
+        AddItemDialog(
+            onDismiss = { showAddDialog = false },
+            onImportPhotos = {
+                showAddDialog = false
+                // TODO: Navigate to import screen
+            },
+            onTakePhoto = {
+                showAddDialog = false
+                // TODO: Open camera
+            },
+            onAddFiles = {
+                showAddDialog = false
+                // TODO: Open file picker
+            }
+        )
+    }
+    
+    // Item Options Dialog
+    if (showItemOptions && selectedItem != null) {
+        ItemOptionsDialog(
+            item = selectedItem!!,
+            onDismiss = { 
+                showItemOptions = false
+                selectedItem = null
+            },
+            onDelete = {
+                viewModel.onDeleteItem(selectedItem!!)
+                showItemOptions = false
+                selectedItem = null
+            }
+        )
     }
 
     Scaffold(
@@ -268,4 +319,72 @@ private fun formatFileSize(size: Long): String {
         size < 1024 * 1024 * 1024 -> "${size / (1024 * 1024)} MB"
         else -> "${size / (1024 * 1024 * 1024)} GB"
     }
+}
+
+@Composable
+private fun AddItemDialog(
+    onDismiss: () -> Unit,
+    onImportPhotos: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onAddFiles: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to Vault") },
+        text = {
+            Column {
+                ListItem(
+                    headlineContent = { Text("Import Photos/Videos") },
+                    leadingContent = { Icon(Icons.Default.Image, null) },
+                    modifier = Modifier.clickable(onClick = onImportPhotos)
+                )
+                ListItem(
+                    headlineContent = { Text("Take Photo") },
+                    leadingContent = { Icon(Icons.Default.PhotoCamera, null) },
+                    modifier = Modifier.clickable(onClick = onTakePhoto)
+                )
+                ListItem(
+                    headlineContent = { Text("Add Files") },
+                    leadingContent = { Icon(Icons.Default.Description, null) },
+                    modifier = Modifier.clickable(onClick = onAddFiles)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        containerColor = Color(0xFF1C1C1E)
+    )
+}
+
+@Composable
+private fun ItemOptionsDialog(
+    item: HiddenItem,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(item.originalName) },
+        text = {
+            Column {
+                ListItem(
+                    headlineContent = { Text("Delete") },
+                    leadingContent = { Icon(Icons.Default.Delete, null, tint = Color(0xFFFF453A)) },
+                    colors = ListItemDefaults.colors(
+                        headlineColor = Color(0xFFFF453A)
+                    ),
+                    modifier = Modifier.clickable(onClick = onDelete)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        containerColor = Color(0xFF1C1C1E)
+    )
 }
