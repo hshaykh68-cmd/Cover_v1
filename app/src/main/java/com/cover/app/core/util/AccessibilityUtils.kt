@@ -34,9 +34,9 @@ object AccessibilityUtils {
      * Calculate relative luminance of a color
      */
     fun calculateLuminance(red: Float, green: Float, blue: Float): Float {
-        val r = if (red <= 0.03928f) red / 12.92f else kotlin.math.pow((red + 0.055f) / 1.055f, 2.4f)
-        val g = if (green <= 0.03928f) green / 12.92f else kotlin.math.pow((green + 0.055f) / 1.055f, 2.4f)
-        val b = if (blue <= 0.03928f) blue / 12.92f else kotlin.math.pow((blue + 0.055f) / 1.055f, 2.4f)
+        val r = if (red <= 0.03928f) red / 12.92f else ((red + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+        val g = if (green <= 0.03928f) green / 12.92f else ((green + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+        val b = if (blue <= 0.03928f) blue / 12.92f else ((blue + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
         return 0.2126f * r + 0.7152f * g + 0.0722f * b
     }
     

@@ -18,7 +18,6 @@ import com.cover.app.data.repository.VaultRepository
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -209,6 +208,19 @@ class IntruderCaptureManager @Inject constructor(
         }
         
         override val lifecycle: androidx.lifecycle.Lifecycle get() = registry
+    }
+
+    /**
+     * Extension to convert ListenableFuture to suspend function (for Guava's ListenableFuture)
+     */
+    private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { cont ->
+        addListener({
+            try {
+                cont.resume(get()) {}
+            } catch (e: Exception) {
+                cont.resumeWith(Result.failure(e))
+            }
+        }, executor ?: Executors.newSingleThreadExecutor())
     }
 
     /**

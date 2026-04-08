@@ -45,7 +45,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.cover.app.domain.model.HiddenItem
 import com.cover.app.presentation.components.BannerAd
-import com.cover.app.presentation.components.ImportProgressDialog
 import com.cover.app.domain.usecase.ImportProgress
 
 @OptIn(ExperimentalMaterial3Api::class)
