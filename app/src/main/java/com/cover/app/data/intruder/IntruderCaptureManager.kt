@@ -121,7 +121,7 @@ class IntruderCaptureManager @Inject constructor(
 
             // Take picture
             val safeExecutor = executor ?: return@withContext null
-            val photoFile = capture.takePicture(safeExecutor).await()
+            val photoFile = capture.takePicture(safeExecutor)
             
             // Save to secure storage via repository
             val photoId = vaultRepository.logIntruderAttempt(
