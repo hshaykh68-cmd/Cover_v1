@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ad-services-config>
+    <!-- AdMob ad services configuration -->
+    <attribution>
+        <allow-all>true</allow-all>
+    </attribution>
+    <ad-id>
+        <allow-all>true</allow-all>
+    </ad-id>
+</ad-services-config>

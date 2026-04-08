@@ -77,10 +77,11 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_launcher_foreground" />
         
-        <!-- AdMob -->
+        <!-- AdMob - Replace with your actual App ID from AdMob console -->
+        <!-- Sample App ID for testing: ca-app-pub-3940256099942544~3347511713 -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy" />
+            android:value="ca-app-pub-3940256099942544~3347511713" />
 
         <!-- Fix for AdMob/Firebase AD_SERVICES_CONFIG conflict -->
         <property
