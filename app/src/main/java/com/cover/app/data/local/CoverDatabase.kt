@@ -69,9 +69,9 @@ class CoverDatabaseProvider @Inject constructor(
         }
     }
 
-    private val database: CoverDatabase by lazy { buildDatabase() }
+    private val dbInstance: CoverDatabase by lazy { buildDatabase() }
 
-    fun getDatabase(): CoverDatabase = database
+    fun getDatabase(): CoverDatabase = dbInstance
 
     private fun buildDatabase(): CoverDatabase {
         // Derive database key from master key via Android Keystore
