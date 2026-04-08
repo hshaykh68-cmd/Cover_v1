@@ -1,0 +1,187 @@
+# Codemagic CI/CD Workflow for Cover App
+# Debug builds for aggressive testing
+# This workflow builds debug APK and uploads artifacts
+
+workflows:
+  cover-debug-build:
+    name: Cover Debug Build
+    environment:
+      groups:
+        - firebase_credentials
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+        - pattern: develop
+          include: true
+        - pattern: feature/*
+          include: true
+    scripts:
+      # Step 1: Clean workspace and set up environment
+      - name: Clean and Setup Environment
+        script: |
+          set -e
+          echo "Cleaning and setting up build environment..."
+          
+          # Clean any previous build artifacts (100% clean build)
+          rm -rf $CM_BUILD_DIR/app/build
+          rm -rf $CM_BUILD_DIR/build
+          rm -rf $CM_BUILD_DIR/.gradle
+          rm -rf ~/.gradle/caches/build-cache-1
+          
+          echo "✓ All build artifacts cleaned"
+          
+          # Set JAVA_HOME to use Java 17
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
+          
+          java -version
+          
+      # Step 2: Download and setup Gradle wrapper
+      - name: Setup Gradle Wrapper
+        script: |
+          set -e
+          echo "Setting up Gradle wrapper..."
+          
+          # Create gradle wrapper directory
+          mkdir -p $CM_BUILD_DIR/gradle/wrapper
+          
+          # Download gradle-wrapper.jar (Gradle 8.9 for AGP 8.7.3 compatibility)
+          curl -L -o $CM_BUILD_DIR/gradle/wrapper/gradle-wrapper.jar \
+            https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar
+          
+          # Update gradle-wrapper.properties to use Gradle 8.9
+          cat > $CM_BUILD_DIR/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip
+networkTimeout=10000
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+EOF
+          
+          # Verify download
+          if [ ! -f "$CM_BUILD_DIR/gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "ERROR: Failed to download gradle-wrapper.jar"
+            exit 1
+          fi
+          
+          echo "Gradle wrapper setup complete (Gradle 8.9)"
+          
+      # Step 3: Create gradle.properties for build optimization
+      - name: Create Gradle Properties
+        script: |
+          set -e
+          echo "Creating gradle.properties..."
+          
+          cat > $CM_BUILD_DIR/gradle.properties << 'EOF'
+          # Project-wide Gradle settings.
+          # IDE (e.g. Android Studio) users:
+          # Gradle settings configured through the IDE *will override*
+          # any settings specified in this file.
+          
+          # For more details on how to configure your build environment visit
+          # http://www.gradle.org/docs/current/userguide/build_environment.html
+          
+          # Specifies the JVM arguments used for the daemon process.
+          # The setting is particularly useful for tweaking memory settings.
+          org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -XX:+UseParallelGC -XX:MaxMetaspaceSize=512m
+          
+          # When configured, Gradle will run in incubating parallel mode.
+          # This option should only be used with decoupled projects.
+          org.gradle.parallel=true
+          
+          # Enables the Gradle daemon for faster builds
+          org.gradle.daemon=true
+          
+          # Enables configuration caching
+          org.gradle.configureondemand=true
+          
+          # Enable build caching (disabled for pure clean builds)
+          org.gradle.caching=false
+          
+          # Enable new incremental build model
+          org.gradle.unsafe.configuration-cache=true
+          
+          # Android settings
+          android.useAndroidX=true
+          android.enableJetifier=true
+          android.nonTransitiveRClass=true
+          android.nonFinalResIds=true
+          
+          # Kotlin settings
+          kotlin.code.style=official
+          
+          # Firebase debug settings
+          FIREBASE_ANALYTICS_COLLECTION_ENABLED=true
+          FIREBASE_CRASHLYTICS_COLLECTION_ENABLED=false  # Disable in debug
+          
+          # Debug build optimization
+          org.gradle.logging.level=lifecycle
+          EOF
+          
+          echo "gradle.properties created"
+          
+      # Step 4: Make gradlew executable
+      - name: Make gradlew Executable
+        script: |
+          chmod +x $CM_BUILD_DIR/gradlew
+          echo "gradlew is now executable"
+          
+      # Step 5: Verify google-services.json exists
+      - name: Verify Firebase Config
+        script: |
+          set -e
+          if [ -f "$CM_BUILD_DIR/app/google-services.json" ]; then
+            echo "✓ google-services.json found"
+          else
+            echo "✗ google-services.json NOT found in app/"
+            echo "Checking environment variables..."
+            if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+              echo "Found GOOGLE_SERVICES_JSON env var, creating file..."
+              echo "$GOOGLE_SERVICES_JSON" > $CM_BUILD_DIR/app/google-services.json
+              echo "✓ google-services.json created from environment variable"
+            else
+              echo "ERROR: No google-services.json found and GOOGLE_SERVICES_JSON env var not set"
+              exit 1
+            fi
+          fi
+          
+      # Step 6: Clean and build debug APK
+      - name: Clean Build Debug APK
+        script: |
+          set -e
+          echo "Running clean build for debug APK..."
+          
+          cd $CM_BUILD_DIR
+          
+          # Build debug APK with stacktrace and forced clean task execution (no cache)
+          ./gradlew clean assembleDebug --stacktrace --rerun-tasks
+          
+          echo "✓ Debug build complete"
+          
+      # Step 7: Verify build output
+      - name: Verify Build Output
+        script: |
+          set -e
+          APK_PATH="$CM_BUILD_DIR/app/build/outputs/apk/debug/app-debug.apk"
+          
+          if [ -f "$APK_PATH" ]; then
+            APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+            echo "✓ Debug APK built successfully"
+            echo "  Path: $APK_PATH"
+            echo "  Size: $APK_SIZE"
+          else
+            echo "✗ APK not found at expected path: $APK_PATH"
+            # List available files
+            find $CM_BUILD_DIR/app/build/outputs -name "*.apk" -type f
+            exit 1
+          fi
+          
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk
+      - app/build/outputs/apk/androidTest/debug/*.apk

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "638093460953",
+    "project_id": "cover-f0a16",
+    "storage_bucket": "cover-f0a16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:638093460953:android:a7ac88ec04e6aec5f505c8",
+        "android_client_info": {
+          "package_name": "com.cover.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXzkVDDgS4YdA8Mn74lLKYR-kOKtns7Pg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

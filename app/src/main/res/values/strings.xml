@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">Calculator</string>
+    <string name="calculator_display_default">0</string>
+    <string name="error">Error</string>
+    
+    <!-- Vault strings -->
+    <string name="vault_empty_title">Vault is empty</string>
+    <string name="vault_empty_message">Tap + to add photos, videos, or files</string>
+    <string name="vault_locked">Vault locked</string>
+    <string name="enter_pin">Enter PIN</string>
+    
+    <!-- Premium -->
+    <string name="upgrade_to_premium">Upgrade to Premium</string>
+    <string name="premium_features">Unlock unlimited storage, no ads, and all features</string>
+    <string name="monthly_price">$1.99/month</string>
+    <string name="yearly_price">$9.99/year</string>
+    <string name="yearly_save">Save 58%</string>
+    <string name="lifetime_price">$24.99 one-time</string>
+    
+    <!-- Intruder -->
+    <string name="intruder_alert">Intruder Alert</string>
+    <string name="intruder_detected">Someone tried to access your vault</string>
+    
+    <!-- Errors -->
+    <string name="error_invalid_pin">Invalid PIN</string>
+    <string name="error_vault_locked">Too many attempts. Try again in %d minutes.</string>
+    <string name="error_file_not_found">File not found</string>
+    <string name="error_decryption_failed">Failed to decrypt file</string>
+</resources>
