@@ -50,4 +50,7 @@ interface HiddenItemDao {
 
     @Query("SELECT * FROM hidden_items WHERE type = :type ORDER BY createdAt DESC")
     fun getItemsByType(type: HiddenItemEntity.ItemType): Flow<List<HiddenItemEntity>>
+    
+    @Query("SELECT * FROM hidden_items ORDER BY createdAt DESC")
+    fun getAllItems(): Flow<List<HiddenItemEntity>>
 }

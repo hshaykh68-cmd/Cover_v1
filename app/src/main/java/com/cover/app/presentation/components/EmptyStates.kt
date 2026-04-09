@@ -1,6 +1,9 @@
 package com.cover.app.presentation.components
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
@@ -14,14 +17,20 @@ import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cover.app.core.animation.PulseAnimation
+import com.cover.app.core.theme.*
 
 /**
  * Phase 8: Empty States & Custom Illustrations
@@ -40,7 +49,7 @@ fun EmptyVaultState(
         actionText = "Import Items",
         onActionClick = onImportClick,
         modifier = modifier,
-        accentColor = Color(0xFF0A84FF)
+        accentColor = CyanGlow
     )
 }
 
@@ -56,7 +65,7 @@ fun EmptyGalleryState(
         actionText = "Add Photos",
         onActionClick = onImportClick,
         modifier = modifier,
-        accentColor = Color(0xFF30D158)
+        accentColor = EmeraldSuccess
     )
 }
 
@@ -72,7 +81,7 @@ fun EmptyFilesState(
         actionText = "Add Files",
         onActionClick = onImportClick,
         modifier = modifier,
-        accentColor = Color(0xFFFF9F0A)
+        accentColor = AmberAlert
     )
 }
 
@@ -87,7 +96,7 @@ fun EmptyIntruderState(
         actionText = null,
         onActionClick = null,
         modifier = modifier,
-        accentColor = Color(0xFF64D2FF)
+        accentColor = CyanGlow
     )
 }
 
@@ -103,7 +112,7 @@ fun EmptyAppsState(
         actionText = "Hide Apps",
         onActionClick = onHideAppsClick,
         modifier = modifier,
-        accentColor = Color(0xFFFF453A)
+        accentColor = CrimsonSecurity
     )
 }
 
@@ -112,6 +121,17 @@ fun FirstTimeUserState(
     onGetStarted: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "first_time_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_pulse"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -119,53 +139,77 @@ fun FirstTimeUserState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Animated icon
-        PulseAnimation {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                color = Color(0xFF1C3A1C),
-                modifier = Modifier.size(120.dp)
+        // Animated icon with gradient orb
+        Box(
+            modifier = Modifier.size(140.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Pulsing gradient orb background
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    CyanGlow.copy(alpha = glowAlpha),
+                                    CyanGlow.copy(alpha = glowAlpha * 0.5f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.width * 0.6f
+                            ),
+                            radius = size.width * 0.5f
+                        )
+                    }
+            )
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Surface15),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = Color(0xFF30D158),
-                        modifier = Modifier.size(64.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = CyanGlow,
+                    modifier = Modifier.size(40.dp)
+                )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Text(
             text = "Welcome to Cover",
             style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "Your secret vault disguised as a calculator. Enter your PIN followed by +0= to unlock.",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray,
+            color = TextSecondary,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         Button(
             onClick = onGetStarted,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF30D158),
-                contentColor = Color.Black
+                containerColor = CyanGlow,
+                contentColor = VoidBlack
             ),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Get Started")
+            Text("Get Started", fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -178,8 +222,19 @@ fun EmptyStateIllustration(
     actionText: String?,
     onActionClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    accentColor: Color = Color(0xFF0A84FF)
+    accentColor: Color = CyanGlow
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "empty_illustration_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_pulse"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -187,49 +242,76 @@ fun EmptyStateIllustration(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Icon with gradient background
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = accentColor.copy(alpha = 0.15f),
-            modifier = Modifier.size(100.dp)
+        // Icon with animated gradient orb background
+        Box(
+            modifier = Modifier.size(120.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            // Pulsing gradient orb
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    accentColor.copy(alpha = glowAlpha),
+                                    accentColor.copy(alpha = glowAlpha * 0.5f),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.width * 0.6f
+                            ),
+                            radius = size.width * 0.5f
+                        )
+                    }
+            )
+            // Icon container
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Surface15),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
+
+        Spacer(modifier = Modifier.height(28.dp))
+
         Text(
             text = title,
             style = MaterialTheme.typography.headlineSmall,
-            color = Color.White,
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = TextSecondary,
             textAlign = TextAlign.Center
         )
-        
+
         if (actionText != null && onActionClick != null) {
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             Button(
                 onClick = onActionClick,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = accentColor,
-                    contentColor = Color.Black
-                )
+                    contentColor = VoidBlack
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -237,7 +319,7 @@ fun EmptyStateIllustration(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(actionText)
+                Text(actionText, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -257,7 +339,7 @@ fun ErrorStateIllustration(
         actionText = "Try Again",
         onActionClick = onRetry,
         modifier = modifier,
-        accentColor = Color(0xFFFF453A)
+        accentColor = CrimsonSecurity
     )
 }
 
@@ -273,7 +355,7 @@ fun NoSearchResultsState(
         actionText = null,
         onActionClick = null,
         modifier = modifier,
-        accentColor = Color(0xFF8E8E93)
+        accentColor = TextTertiary
     )
 }
 
@@ -289,6 +371,6 @@ fun StorageFullState(
         actionText = "Upgrade Now",
         onActionClick = onUpgrade,
         modifier = modifier,
-        accentColor = Color(0xFFFFD700)
+        accentColor = GoldPremium
     )
 }

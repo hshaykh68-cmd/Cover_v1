@@ -1,5 +1,6 @@
 package com.cover.app.presentation.onboarding
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +17,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.cover.app.core.theme.*
 import com.cover.app.data.security.PinManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,14 +50,37 @@ fun OnboardingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Setup Cover", color = Color.White) },
+                title = { Text("Setup Cover", color = TextPrimary, fontWeight = FontWeight.SemiBold) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
+                    containerColor = VoidBlack
                 )
             )
         },
-        containerColor = Color.Black
+        containerColor = VoidBlack
     ) { padding ->
+        // Gradient background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            VoidBlue,
+                            VoidBlack,
+                            VoidPurple.copy(alpha = 0.2f)
+                        ),
+                        startY = 0f,
+                        endY = 800f
+                    )
+                )
+                .drawBehind {
+                    drawCircle(
+                        color = CyanGlow.copy(alpha = 0.03f),
+                        radius = size.width * 0.3f,
+                        center = Offset(size.width * 0.5f, size.height * 0.2f)
+                    )
+                }
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -60,13 +88,19 @@ fun OnboardingScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Progress indicator
-            LinearProgressIndicator(
-                progress = { (currentStep + 1) / steps.size.toFloat() },
+            // Progress indicator with glow
+            Box(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF30D158),
-                trackColor = Color(0xFF2C2C2E)
-            )
+                contentAlignment = Alignment.Center
+            ) {
+                LinearProgressIndicator(
+                    progress = { (currentStep + 1) / steps.size.toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = CyanGlow,
+                    trackColor = Surface20,
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -127,11 +161,17 @@ fun OnboardingScreen(
             }
 
             if (isLoading) {
-                CircularProgressIndicator(
+                Box(
                     modifier = Modifier.padding(top = 16.dp),
-                    color = Color(0xFF30D158)
-                )
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = CyanGlow,
+                        strokeWidth = 3.dp
+                    )
+                }
             }
+        }
         }
     }
 }
@@ -140,24 +180,70 @@ fun OnboardingScreen(
 private fun WelcomeStep(
     onNext: () -> Unit
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "shield_pulse")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shield_glow"
+    )
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shield_scale"
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Icon(
-            imageVector = Icons.Default.Shield,
-            contentDescription = null,
-            modifier = Modifier.size(120.dp),
-            tint = Color(0xFF30D158)
-        )
+        Box(
+            modifier = Modifier.size(140.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Pulsing glow
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawCircle(
+                            color = CyanGlow.copy(alpha = glowAlpha),
+                            radius = size.width * 0.5f
+                        )
+                        drawCircle(
+                            color = CyanGlow.copy(alpha = glowAlpha * 0.5f),
+                            radius = size.width * 0.4f
+                        )
+                    }
+            )
+            Icon(
+                imageVector = Icons.Default.Shield,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                tint = CyanGlow
+            )
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
             text = "Welcome to Cover",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = TextPrimary,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -165,7 +251,7 @@ private fun WelcomeStep(
         Text(
             text = "Your private vault disguised as a calculator.",
             fontSize = 16.sp,
-            color = Color.Gray,
+            color = TextSecondary,
             textAlign = TextAlign.Center
         )
 
@@ -174,19 +260,22 @@ private fun WelcomeStep(
         FeatureItem(
             icon = Icons.Default.Edit,
             title = "Calculator Camouflage",
-            description = "Looks like a normal calculator"
+            description = "Looks like a normal calculator",
+            tint = CyanGlow
         )
 
         FeatureItem(
             icon = Icons.Default.Lock,
             title = "Military-Grade Encryption",
-            description = "AES-256 encryption for all files"
+            description = "AES-256 encryption for all files",
+            tint = EmeraldSuccess
         )
 
         FeatureItem(
             icon = Icons.Default.Warning,
             title = "Intruder Detection",
-            description = "Photos of anyone who tries to break in"
+            description = "Photos of anyone who tries to break in",
+            tint = CrimsonSecurity
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -197,15 +286,15 @@ private fun WelcomeStep(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF30D158)
+                containerColor = CyanGlow,
+                contentColor = VoidBlack
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
             Text(
                 text = "Get Started",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -229,9 +318,9 @@ private fun PinSetupStep(
     ) {
         Text(
             text = title,
-            fontSize = 24.sp,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = TextPrimary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -239,70 +328,99 @@ private fun PinSetupStep(
         Text(
             text = subtitle,
             fontSize = 14.sp,
-            color = Color.Gray
+            color = TextSecondary
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Surface(
-            color = Color(0xFF2C2C2E),
-            shape = RoundedCornerShape(8.dp)
+        // Example badge
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Surface15)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
             Text(
                 text = "Example: $example",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = Color(0xFFFF9F0A),
+                color = AmberAlert,
                 fontWeight = FontWeight.Medium
             )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // PIN Input 1
         OutlinedTextField(
             value = pin,
-            onValueChange = { 
+            onValueChange = {
                 if (it.length <= 8 && it.all { c -> c.isDigit() }) onPinChange(it)
             },
-            label = { Text("Enter PIN") },
+            label = { Text("Enter PIN", color = TextSecondary) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF30D158),
-                unfocusedBorderColor = Color.Gray,
-                focusedLabelColor = Color(0xFF30D158),
-                unfocusedLabelColor = Color.Gray
+                focusedBorderColor = CyanGlow,
+                unfocusedBorderColor = Surface20,
+                focusedLabelColor = CyanGlow,
+                unfocusedLabelColor = TextSecondary,
+                focusedContainerColor = Surface10,
+                unfocusedContainerColor = Surface10,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // PIN Input 2
         OutlinedTextField(
             value = confirmPin,
-            onValueChange = { 
+            onValueChange = {
                 if (it.length <= 8 && it.all { c -> c.isDigit() }) onConfirmPinChange(it)
             },
-            label = { Text("Confirm PIN") },
+            label = { Text("Confirm PIN", color = TextSecondary) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF30D158),
-                unfocusedBorderColor = Color.Gray,
-                focusedLabelColor = Color(0xFF30D158),
-                unfocusedLabelColor = Color.Gray
+                focusedBorderColor = CyanGlow,
+                unfocusedBorderColor = Surface20,
+                focusedLabelColor = CyanGlow,
+                unfocusedLabelColor = TextSecondary,
+                focusedContainerColor = Surface10,
+                unfocusedContainerColor = Surface10,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
             )
         )
 
         if (errorMessage != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = errorMessage,
-                color = Color(0xFFFF453A),
-                fontSize = 14.sp
-            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(CrimsonSecurity.copy(alpha = 0.1f))
+                    .padding(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = CrimsonSecurity,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = errorMessage,
+                        color = CrimsonSecurity,
+                        fontSize = 14.sp
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -315,7 +433,10 @@ private fun PinSetupStep(
                 onClick = onBack,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.White
+                    contentColor = TextSecondary
+                ),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(Surface20)
                 )
             ) {
                 Text("Back")
@@ -325,10 +446,12 @@ private fun PinSetupStep(
                 onClick = onNext,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF30D158)
-                )
+                    containerColor = CyanGlow,
+                    contentColor = VoidBlack
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Next", color = Color.Black)
+                Text("Next", fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -338,26 +461,54 @@ private fun PinSetupStep(
 private fun CompleteStep(
     onFinish: () -> Unit
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "complete_pulse")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "complete_glow"
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ) {
         Spacer(modifier = Modifier.weight(1f))
 
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = null,
-            modifier = Modifier.size(120.dp),
-            tint = Color(0xFF30D158)
-        )
+        // Success check with glow
+        Box(
+            modifier = Modifier.size(140.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawCircle(
+                            color = EmeraldSuccess.copy(alpha = glowAlpha),
+                            radius = size.width * 0.5f
+                        )
+                    }
+            )
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = EmeraldSuccess
+            )
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
             text = "Setup Complete!",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = TextPrimary,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -365,28 +516,39 @@ private fun CompleteStep(
         Text(
             text = "Your vault is ready. Remember your PINs:\n\nReal PIN: 4-8 digits + 0 =\nDecoy PIN: 4-8 digits + 1 =",
             fontSize = 16.sp,
-            color = Color.Gray,
+            color = TextSecondary,
             textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Surface(
-            color = Color(0xFF1C1C1E),
-            shape = RoundedCornerShape(12.dp)
+        // Tip card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Surface10)
+                .padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Quick Tip:",
-                    color = Color(0xFFFF9F0A),
-                    fontWeight = FontWeight.Medium
-                )
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = AmberAlert,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Quick Tip:",
+                        color = AmberAlert,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Shake your phone to instantly close the app when someone approaches.",
-                    color = Color.Gray,
+                    color = TextSecondary,
                     fontSize = 14.sp
                 )
             }
@@ -400,15 +562,15 @@ private fun CompleteStep(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF30D158)
+                containerColor = EmeraldSuccess,
+                contentColor = VoidBlack
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
             Text(
                 text = "Enter Vault",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -418,7 +580,8 @@ private fun CompleteStep(
 private fun FeatureItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-    description: String
+    description: String,
+    tint: Color = CyanGlow
 ) {
     Row(
         modifier = Modifier
@@ -426,15 +589,19 @@ private fun FeatureItem(
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(
-            color = Color(0xFF2C2C2E),
-            shape = RoundedCornerShape(12.dp)
+        // Icon with glassmorphic background
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Surface15),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.padding(12.dp),
-                tint = Color(0xFF64D2FF)
+                modifier = Modifier.size(24.dp),
+                tint = tint
             )
         }
 
@@ -443,12 +610,12 @@ private fun FeatureItem(
         Column {
             Text(
                 text = title,
-                color = Color.White,
+                color = TextPrimary,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = description,
-                color = Color.Gray,
+                color = TextSecondary,
                 fontSize = 14.sp
             )
         }

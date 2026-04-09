@@ -96,6 +96,35 @@ class GalleryViewModel @Inject constructor(
         }
     }
     
+    fun loadDefaultVaultItems() {
+        // Cancel previous collection jobs to avoid accumulation
+        premiumJob?.cancel()
+        itemsJob?.cancel()
+        
+        // Collect premium status using cached StateFlow
+        premiumJob = viewModelScope.launch {
+            premiumStatus.collect { isPremium ->
+                _state.update { it.copy(isPremium = isPremium) }
+            }
+        }
+        
+        // Collect items from default vault (all items)
+        itemsJob = viewModelScope.launch {
+            vaultRepository.getAllItems()
+                .onStart { _state.update { it.copy(isLoading = true) } }
+                .catch { error ->
+                    _state.update { it.copy(isLoading = false, error = error.message) } }
+                .collect { items ->
+                    _state.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            items = items
+                        )
+                    }
+                }
+        }
+    }
+    
     override fun onCleared() {
         super.onCleared()
         premiumJob?.cancel()
@@ -138,6 +167,74 @@ class GalleryViewModel @Inject constructor(
             }
             
             importFilesUseCase(vaultId, pin, paths)
+                .onStart {
+                    _state.update { it.copy(isImporting = true) }
+                }
+                .onCompletion {
+                    _state.update { it.copy(isImporting = false, importProgress = null) }
+                }
+                .collect { progress ->
+                    _state.update { it.copy(importProgress = progress) }
+                    if (progress is ImportProgress.Completed) {
+                        _events.emit(GalleryEvent.ShowSnackbar(
+                            "Imported ${progress.successCount} files"
+                        ))
+                    }
+                }
+        }
+    }
+    
+    fun importMediaToDefault(uris: List<Uri>) {
+        importJob = viewModelScope.launch {
+            // Get default vault ID
+            val defaultVault = vaultRepository.getAllVaults().first().firstOrNull()
+            if (defaultVault == null) {
+                _events.emit(GalleryEvent.ShowSnackbar("No vault found. Please create a vault first."))
+                return@launch
+            }
+            
+            // Check if should show upsell on import
+            if (promotionManager.onImportAction()) {
+                _showUpsell.value = UpsellTrigger.IMPORT_LIMIT
+                inAppMessageManager.triggerPromotionalUpsell(UpsellTrigger.IMPORT_LIMIT)
+            }
+            
+            val pin = _currentPin.value.ifEmpty { "1234" } // Fallback pin
+            importMediaUseCase(defaultVault.id, pin, uris)
+                .onStart {
+                    _state.update { it.copy(isImporting = true) }
+                }
+                .onCompletion {
+                    _state.update { it.copy(isImporting = false, importProgress = null) }
+                }
+                .collect { progress ->
+                    _state.update { it.copy(importProgress = progress) }
+                    if (progress is ImportProgress.Completed) {
+                        _events.emit(GalleryEvent.ShowSnackbar(
+                            "Imported ${progress.successCount} items"
+                        ))
+                    }
+                }
+        }
+    }
+    
+    fun importFilesToDefault(paths: List<String>) {
+        importJob = viewModelScope.launch {
+            // Get default vault ID
+            val defaultVault = vaultRepository.getAllVaults().first().firstOrNull()
+            if (defaultVault == null) {
+                _events.emit(GalleryEvent.ShowSnackbar("No vault found. Please create a vault first."))
+                return@launch
+            }
+            
+            // Check if should show upsell on import
+            if (promotionManager.onImportAction()) {
+                _showUpsell.value = UpsellTrigger.IMPORT_LIMIT
+                inAppMessageManager.triggerPromotionalUpsell(UpsellTrigger.IMPORT_LIMIT)
+            }
+            
+            val pin = _currentPin.value.ifEmpty { "1234" } // Fallback pin
+            importFilesUseCase(defaultVault.id, pin, paths)
                 .onStart {
                     _state.update { it.copy(isImporting = true) }
                 }

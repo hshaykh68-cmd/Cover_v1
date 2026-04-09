@@ -1,12 +1,17 @@
 package com.cover.app.presentation.navigation
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.cover.app.presentation.calculator.CalculatorScreen
+import com.cover.app.presentation.components.BottomNavBar
 import com.cover.app.presentation.gallery.GalleryScreen
 import com.cover.app.presentation.intruder.IntruderLogsScreen
 import com.cover.app.presentation.onboarding.OnboardingScreen
@@ -26,88 +31,166 @@ fun AppNavigation(
     
     // If PIN not set, force onboarding
     val actualStartDestination = if (isPinSet) startDestination else Screen.Onboarding.route
+    
+    // Track current route for bottom nav visibility
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Show bottom nav only on authenticated screens
+    val showBottomNav = currentRoute in listOf(
+        Screen.Home.route,
+        Screen.Gallery.route,
+        Screen.IntruderLogs.route,
+        Screen.Settings.route
+    )
 
-    NavHost(
-        navController = navController,
-        startDestination = actualStartDestination,
-        modifier = modifier
-    ) {
-        composable(Screen.Onboarding.route) {
-            OnboardingScreen(
-                onComplete = {
-                    navController.navigate(Screen.Calculator.route) {
-                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            if (showBottomNav) {
+                BottomNavBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            // Pop up to the start destination to avoid building a large stack
+                            popUpTo(Screen.Home.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        
-        composable(Screen.Calculator.route) {
-            CalculatorScreen(
-                onRealVaultAccess = { pin ->
-                    // Navigate to real vault - PIN already verified in ViewModel
-                    navController.navigate(Screen.Vault.createRoute("real_vault_id"))
-                },
-                onDecoyVaultAccess = { pin ->
-                    // Navigate to decoy vault
-                    navController.navigate(Screen.Vault.createRoute("decoy_vault_id"))
-                }
-            )
-        }
-        
-        composable(Screen.Vault.route) { backStackEntry ->
-            val vaultId = backStackEntry.arguments?.getString("vaultId") ?: ""
-            VaultScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
-                },
-                onNavigateToUpgrade = {
-                    navController.navigate(Screen.Upgrade.route)
-                }
-            )
-        }
-        
-        composable(Screen.Gallery.route) { backStackEntry ->
-            val vaultId = backStackEntry.arguments?.getString("vaultId") ?: ""
-            // Note: PIN should be passed securely, this is simplified
-            val pin = "1234" // Placeholder - should come from secure storage
-            GalleryScreen(
-                vaultId = vaultId,
-                pin = pin,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
-                onNavigateToUpgrade = {
-                    navController.navigate(Screen.Upgrade.route)
-                }
-            )
-        }
-        
-        composable(Screen.IntruderLogs.route) {
-            IntruderLogsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        
-        composable(Screen.Upgrade.route) {
-            PremiumScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = actualStartDestination,
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            // Unauthenticated flow
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onComplete = {
+                        navController.navigate(Screen.Calculator.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            
+            composable(Screen.Calculator.route) {
+                CalculatorScreen(
+                    onRealVaultAccess = {
+                        // Navigate to home (authenticated main screen)
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Calculator.route) { inclusive = false }
+                        }
+                    },
+                    onDecoyVaultAccess = {
+                        // Navigate to home (decoy mode)
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Calculator.route) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            
+            // Authenticated flow with bottom navigation
+            composable(Screen.Home.route) {
+                VaultScreen(
+                    onNavigateBack = {
+                        // Lock vault - go back to calculator
+                        navController.navigate(Screen.Calculator.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
+                    },
+                    onNavigateToUpgrade = {
+                        navController.navigate(Screen.Upgrade.route)
+                    }
+                )
+            }
+            
+            composable(Screen.Gallery.route) {
+                GalleryScreen(
+                    onNavigateBack = {
+                        // Navigate to home when back pressed
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToUpgrade = {
+                        navController.navigate(Screen.Upgrade.route)
+                    }
+                )
+            }
+            
+            composable(Screen.IntruderLogs.route) {
+                IntruderLogsScreen(
+                    onNavigateBack = {
+                        // Navigate to home when back pressed
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+            
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onNavigateBack = {
+                        // Navigate to home when back pressed
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+            
+            // Detail screens (no bottom nav)
+            composable(Screen.Upgrade.route) {
+                PremiumScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            
+            // Legacy routes for backward compatibility
+            composable(Screen.Vault.route) { backStackEntry ->
+                val vaultId = backStackEntry.arguments?.getString("vaultId") ?: ""
+                VaultScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
+                    },
+                    onNavigateToUpgrade = {
+                        navController.navigate(Screen.Upgrade.route)
+                    }
+                )
+            }
+            
+            composable(Screen.LegacyGallery.route) { backStackEntry ->
+                val vaultId = backStackEntry.arguments?.getString("vaultId") ?: ""
+                GalleryScreen(
+                    vaultId = vaultId,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToUpgrade = {
+                        navController.navigate(Screen.Upgrade.route)
+                    }
+                )
+            }
         }
     }
 }

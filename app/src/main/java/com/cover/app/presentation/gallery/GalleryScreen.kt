@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -33,9 +34,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,25 +48,44 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.cover.app.core.theme.*
 import com.cover.app.domain.model.HiddenItem
 import com.cover.app.presentation.components.BannerAd
+import com.cover.app.presentation.components.CoachMarkOverlay
 import com.cover.app.domain.usecase.ImportProgress
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreen(
-    vaultId: String,
-    pin: String,
-    onNavigateBack: () -> Unit,
+    vaultId: String = "",
+    pin: String = "",
+    onNavigateBack: (() -> Unit)? = null,
     onNavigateToUpgrade: () -> Unit,
     viewModel: GalleryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     
-    // Load items when screen is displayed
+    // Coach mark state for first-time users
+    var showCoachMark by remember { mutableStateOf(false) }
+    
+    // Show coach mark on first visit explaining gallery
+    LaunchedEffect(Unit) {
+        delay(500)
+        if (state.items.isNotEmpty()) {
+            showCoachMark = true
+        }
+    }
+    
+    // Load items when screen is displayed (only for legacy routes with vaultId)
     LaunchedEffect(vaultId, pin) {
-        viewModel.loadVaultItems(vaultId, pin)
+        if (vaultId.isNotEmpty()) {
+            viewModel.loadVaultItems(vaultId, pin)
+        } else {
+            // For new navigation, use default vault loading
+            viewModel.loadDefaultVaultItems()
+        }
     }
     
     // Media picker launcher
@@ -69,7 +93,11 @@ fun GalleryScreen(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            viewModel.importMedia(vaultId, pin, uris)
+            if (vaultId.isNotEmpty()) {
+                viewModel.importMedia(vaultId, pin, uris)
+            } else {
+                viewModel.importMediaToDefault(uris)
+            }
         }
     }
     
@@ -78,7 +106,11 @@ fun GalleryScreen(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            viewModel.importFiles(vaultId, pin, uris.map { it.toString() })
+            if (vaultId.isNotEmpty()) {
+                viewModel.importFiles(vaultId, pin, uris.map { it.toString() })
+            } else {
+                viewModel.importFilesToDefault(uris.map { it.toString() })
+            }
         }
     }
     
@@ -92,21 +124,29 @@ fun GalleryScreen(
         )
     }
     
+    // Coach mark overlay
+    CoachMarkOverlay(
+        isVisible = showCoachMark,
+        title = "Your Hidden Gallery",
+        description = "Your files are encrypted and stored securely. Tap the + button to import more items. Long press any item to select multiple for batch operations.",
+        onDismiss = { showCoachMark = false }
+    )
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = "Gallery (${state.items.size})",
-                        color = Color.White
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+                    if (onNavigateBack != null) {
+                        NeumorphicIconButton(
+                            onClick = onNavigateBack,
+                            icon = Icons.AutoMirrored.Filled.ArrowBack
                         )
                     }
                 },
@@ -116,20 +156,17 @@ fun GalleryScreen(
                             Icon(
                                 Icons.Default.Star,
                                 contentDescription = "Upgrade",
-                                tint = Color(0xFFFFD700)
+                                tint = AmberAlert
                             )
                         }
                     }
-                    IconButton(onClick = { viewModel.toggleSelectionMode() }) {
-                        Icon(
-                            if (state.isSelectionMode) Icons.Default.Close else Icons.Default.CheckCircle,
-                            contentDescription = "Select",
-                            tint = Color.White
-                        )
-                    }
+                    NeumorphicIconButton(
+                        onClick = { viewModel.toggleSelectionMode() },
+                        icon = if (state.isSelectionMode) Icons.Default.Close else Icons.Default.CheckCircle
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
+                    containerColor = VoidBlack
                 )
             )
         },
@@ -140,15 +177,36 @@ fun GalleryScreen(
                 onImportFiles = { filePickerLauncher.launch(arrayOf("*/*")) }
             )
         },
-        containerColor = Color.Black
+        containerColor = VoidBlack
     ) { padding ->
+        // Gradient background with glow
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            VoidBlue,
+                            VoidBlack,
+                            VoidPurple.copy(alpha = 0.3f)
+                        ),
+                        startY = 0f,
+                        endY = 1000f
+                    )
+                )
+                .drawBehind {
+                    // Cinematic glow effect at top
+                    drawCircle(
+                        color = CyanGlow.copy(alpha = 0.03f),
+                        radius = size.width * 0.4f,
+                        center = Offset(size.width * 0.5f, size.height * 0.1f)
+                    )
+                }
         ) {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
             ) {
                 // Banner ad at top (hidden for premium)
                 BannerAd(
@@ -161,10 +219,15 @@ fun GalleryScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     when {
                         state.isLoading -> {
-                            CircularProgressIndicator(
+                            Box(
                                 modifier = Modifier.align(Alignment.Center),
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = CyanGlow,
+                                    strokeWidth = 3.dp
+                                )
+                            }
                         }
                         state.items.isEmpty() -> {
                             EmptyGalleryState(
@@ -268,16 +331,27 @@ private fun PhotoGridItem(
     onClick: () -> Unit,
     onLongPress: () -> Unit
 ) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+        label = "grid_item_scale"
+    )
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0xFF1C1C1E))
+            .scale(scale)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Surface15)
             .clickable(onClick = onClick)
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                else Color.Transparent
-            )
+            .drawBehind {
+                if (isSelected) {
+                    drawRect(
+                        color = CyanGlow.copy(alpha = 0.3f),
+                        size = size
+                    )
+                }
+            }
     ) {
         // Thumbnail or icon
         when (item) {
@@ -301,7 +375,7 @@ private fun PhotoGridItem(
                         imageVector = Icons.Default.PlayCircle,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
-                        tint = Color.White.copy(alpha = 0.8f)
+                        tint = CyanGlow.copy(alpha = 0.9f)
                     )
                 }
             }
@@ -314,7 +388,7 @@ private fun PhotoGridItem(
                         imageVector = Icons.Default.Audiotrack,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
-                        tint = Color.Gray
+                        tint = TextSecondary
                     )
                 }
             }
@@ -327,7 +401,7 @@ private fun PhotoGridItem(
                         imageVector = Icons.Default.Description,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
-                        tint = Color.Gray
+                        tint = TextSecondary
                     )
                 }
             }
@@ -344,7 +418,7 @@ private fun PhotoGridItem(
                         },
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
-                        tint = Color.Gray
+                        tint = TextSecondary
                     )
                 }
             }
@@ -355,21 +429,32 @@ private fun PhotoGridItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        else Color.Black.copy(alpha = 0.3f)
-                    ),
+                    .drawBehind {
+                        if (isSelected) {
+                            drawRect(color = CyanGlow.copy(alpha = 0.4f))
+                        } else {
+                            drawRect(color = VoidBlack.copy(alpha = 0.3f))
+                        }
+                    },
                 contentAlignment = Alignment.TopEnd
             ) {
                 if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Selected",
+                    Box(
                         modifier = Modifier
-                            .padding(4.dp)
-                            .size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                            .padding(6.dp)
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(CyanGlow)
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            modifier = Modifier.size(18.dp),
+                            tint = VoidBlack
+                        )
+                    }
                 }
             }
         }
@@ -385,7 +470,7 @@ private fun PhotoGridItem(
                 Text(
                     text = item.originalName.substringAfterLast(".", "").uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
+                    color = TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -443,15 +528,28 @@ private fun ImportSpeedDial(
             }
         }
         
-        // Main FAB
-        FloatingActionButton(
-            onClick = { expanded = !expanded },
-            containerColor = MaterialTheme.colorScheme.primary
+        // Main FAB with glow
+        Box(
+            modifier = Modifier.drawBehind {
+                if (expanded) {
+                    drawCircle(
+                        color = CyanGlow.copy(alpha = 0.3f),
+                        radius = size.width * 0.6f
+                    )
+                }
+            }
         ) {
-            Icon(
-                if (expanded) Icons.Default.Close else Icons.Default.Add,
-                contentDescription = "Import"
-            )
+            FloatingActionButton(
+                onClick = { expanded = !expanded },
+                containerColor = CyanGlow,
+                contentColor = VoidBlack,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(
+                    if (expanded) Icons.Default.Close else Icons.Default.Add,
+                    contentDescription = "Import"
+                )
+            }
         }
     }
 }
@@ -468,14 +566,16 @@ private fun SpeedDialItem(
     ) {
         Text(
             text = label,
-            color = Color.White,
+            color = TextPrimary,
             style = MaterialTheme.typography.bodyMedium
         )
         SmallFloatingActionButton(
             onClick = onClick,
-            containerColor = Color(0xFF2C2C2E)
+            containerColor = Surface15,
+            contentColor = CyanGlow,
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Icon(icon, contentDescription = label, tint = Color.White)
+            Icon(icon, contentDescription = label, tint = CyanGlow)
         }
     }
 }
@@ -487,24 +587,30 @@ private fun ImportProgressDialog(
 ) {
     AlertDialog(
         onDismissRequest = { },
-        title = { Text("Importing...") },
+        title = { Text("Importing...", color = TextPrimary) },
         text = {
             Column {
                 when (progress) {
                     is ImportProgress.Started -> {
-                        Text("Preparing to import ${progress.total} items...")
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Preparing to import ${progress.total} items...", color = TextSecondary)
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = CyanGlow,
+                            trackColor = Surface20
+                        )
                     }
                     is ImportProgress.InProgress -> {
-                        Text("Imported ${progress.completed} of ${progress.total}")
+                        Text("Imported ${progress.completed} of ${progress.total}", color = TextSecondary)
                         LinearProgressIndicator(
                             progress = { progress.completed.toFloat() / progress.total },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            color = CyanGlow,
+                            trackColor = Surface20
                         )
                         if (progress.failed > 0) {
                             Text(
                                 "${progress.failed} failed",
-                                color = MaterialTheme.colorScheme.error,
+                                color = CrimsonSecurity,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -514,11 +620,16 @@ private fun ImportProgressDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.textButtonColors(contentColor = CyanGlow)
+            ) {
                 Text("Cancel")
             }
         },
-        containerColor = Color(0xFF1C1C1E)
+        containerColor = Surface15,
+        titleContentColor = TextPrimary,
+        textContentColor = TextSecondary
     )
 }
 
@@ -529,45 +640,77 @@ private fun SelectionBottomBar(
     onExportSelected: () -> Unit,
     onClearSelection: () -> Unit
 ) {
-    Surface(
-        color = Color(0xFF1C1C1E),
-        tonalElevation = 8.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Surface15)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "$selectedCount selected",
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
+                color = TextPrimary,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
             )
-            
+
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                IconButton(onClick = onExportSelected) {
+                // Export button with glassmorphic background
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Surface20)
+                        .clickable(onClick = onExportSelected),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         Icons.Default.Download,
                         contentDescription = "Export",
-                        tint = Color.White
+                        tint = CyanGlow,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                IconButton(onClick = onDeleteSelected) {
+
+                // Delete button with red background
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(CrimsonSecurity.copy(alpha = 0.15f))
+                        .clickable(onClick = onDeleteSelected),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = CrimsonSecurity,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                IconButton(onClick = onClearSelection) {
+
+                // Clear button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Surface20)
+                        .clickable(onClick = onClearSelection),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Clear",
-                        tint = Color.White
+                        tint = TextSecondary,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -580,41 +723,70 @@ private fun EmptyGalleryState(
     onImportClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "empty_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_pulse"
+    )
+
     Column(
         modifier = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.PhotoLibrary,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier.size(120.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Glow background
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        drawCircle(
+                            color = CyanGlow.copy(alpha = glowAlpha),
+                            radius = size.width * 0.5f
+                        )
+                    }
+            )
+            Icon(
+                imageVector = Icons.Default.PhotoLibrary,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = TextSecondary
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Gallery is empty",
-            style = MaterialTheme.typography.headlineSmall,
-            color = Color.White,
+            text = "Gallery is Empty",
+            style = MaterialTheme.typography.headlineMedium,
+            color = TextPrimary,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Tap + to import photos and videos",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            text = "Your hidden memories await",
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextSecondary,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         Button(
             onClick = onImportClick,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+                containerColor = CyanGlow,
+                contentColor = VoidBlack
+            ),
+            shape = RoundedCornerShape(12.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Import Photos")
+            Text("Import Photos", fontWeight = FontWeight.Medium)
         }
     }
 }

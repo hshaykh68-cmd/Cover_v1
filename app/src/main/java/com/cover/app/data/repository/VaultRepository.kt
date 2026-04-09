@@ -78,6 +78,12 @@ class VaultRepository @Inject constructor(
             entities.map { it.toDomainModel() }
         }
     }
+    
+    fun getAllItems(): Flow<List<HiddenItem>> {
+        return hiddenItemDao.getAllItems().map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+    }
 
     suspend fun addItemToVault(
         vaultId: String,

@@ -1,17 +1,14 @@
 package com.cover.app.presentation.calculator
 
 import android.app.Activity
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.with
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,15 +19,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cover.app.core.animation.AnimationSpecs
+import com.cover.app.core.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
@@ -74,11 +77,21 @@ fun CalculatorScreen(
         }
     }
 
+    // Background gradient
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(VoidBlue, VoidBlack, VoidPurple),
+                    startY = 0f,
+                    endY = 2000f
+                )
+            )
     ) {
+        // Subtle ambient glow in background
+        AmbientGlow()
+
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -89,7 +102,7 @@ fun CalculatorScreen(
                 modifier = Modifier.weight(1f)
             )
 
-            // Keypad
+            // Keypad with neumorphic design
             CalculatorKeypad(
                 onNumberClick = viewModel::onNumberClick,
                 onOperationClick = viewModel::onOperationClick,
@@ -102,11 +115,11 @@ fun CalculatorScreen(
             )
         }
 
-        // Lockout overlay
+        // Lockout overlay with glassmorphism
         AnimatedVisibility(
             visible = lockoutState is LockoutUiState.Locked,
-            enter = fadeIn(),
-            exit = fadeOut()
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(300))
         ) {
             val locked = lockoutState as? LockoutUiState.Locked
             LockoutOverlay(
@@ -115,11 +128,11 @@ fun CalculatorScreen(
             )
         }
 
-        // Failed attempt error
+        // Failed attempt error with shake animation
         AnimatedVisibility(
             visible = pinState is PinDetectionState.FailedAttempt,
-            enter = slideInVertically { -it },
-            exit = slideOutVertically { -it },
+            enter = slideInVertically { -it } + fadeIn(),
+            exit = slideOutVertically { -it } + fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             val failed = pinState as? PinDetectionState.FailedAttempt
@@ -132,26 +145,14 @@ fun CalculatorScreen(
             )
         }
 
-        // Capturing indicator
+        // Capturing indicator with pulsing glow
         AnimatedVisibility(
             visible = pinState is PinDetectionState.Capturing,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.Center)
         ) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.8f),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(color = Color.White)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Verifying...", color = Color.White)
-                }
-            }
+            CapturingIndicator()
         }
     }
 
@@ -162,6 +163,40 @@ fun CalculatorScreen(
 }
 
 @Composable
+private fun AmbientGlow() {
+    // Subtle animated glow in background
+    val infiniteTransition = rememberInfiniteTransition(label = "ambient_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.02f,
+        targetValue = 0.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                // Top-right cyan glow
+                drawCircle(
+                    color = CyanGlow.copy(alpha = glowAlpha),
+                    radius = size.width * 0.6f,
+                    center = Offset(size.width * 0.8f, size.height * 0.1f)
+                )
+                // Bottom-left subtle purple
+                drawCircle(
+                    color = Surface30.copy(alpha = glowAlpha * 0.5f),
+                    radius = size.width * 0.5f,
+                    center = Offset(size.width * 0.2f, size.height * 0.9f)
+                )
+            }
+    )
+}
+
+@Composable
 private fun LockoutOverlay(
     remainingMinutes: Int,
     remainingSeconds: Int
@@ -169,45 +204,64 @@ private fun LockoutOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.95f))
+            .background(VoidBlack.copy(alpha = 0.95f))
             .clickable(enabled = false) { },
         contentAlignment = Alignment.Center
     ) {
+        // Glassmorphic card
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier
+                .padding(32.dp)
+                .background(
+                    color = Surface10,
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(32.dp)
         ) {
+            // Pulsing lock icon
+            val infiniteTransition = rememberInfiniteTransition(label = "lock_pulse")
+            val scale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1000, easing = EaseInOutSine),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "lock_scale"
+            )
+
             Icon(
                 imageVector = Icons.Default.Lock,
                 contentDescription = null,
                 modifier = Modifier.size(80.dp),
-                tint = Color(0xFFFF453A)
+                tint = CrimsonSecurity
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "Locked Out",
-                fontSize = 28.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = TextPrimary
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Too many failed attempts.",
-                fontSize = 18.sp,
-                color = Color.Gray
+                fontSize = 16.sp,
+                color = TextSecondary
             )
             Spacer(modifier = Modifier.height(32.dp))
             Text(
                 text = "Try again in:",
-                fontSize = 16.sp,
-                color = Color.Gray
+                fontSize = 14.sp,
+                color = TextTertiary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = String.format("%02d:%02d", remainingMinutes, remainingSeconds),
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFFF9F0A)
+                color = AmberAlert
             )
         }
     }
@@ -215,10 +269,28 @@ private fun LockoutOverlay(
 
 @Composable
 private fun ErrorBanner(message: String) {
+    // Shake animation for error
+    val shakeAnim = remember { Animatable(0f) }
+    LaunchedEffect(message) {
+        shakeAnim.animateTo(
+            targetValue = 0f,
+            animationSpec = keyframes {
+                durationMillis = 500
+                -10f at 50
+                10f at 100
+                -10f at 150
+                10f at 200
+                0f at 500
+            }
+        )
+    }
+
     Surface(
-        color = Color(0xFFFF453A),
+        color = CrimsonSecurity.copy(alpha = 0.9f),
         shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(x = shakeAnim.value.dp)
     ) {
         Row(
             modifier = Modifier
@@ -230,14 +302,71 @@ private fun ErrorBanner(message: String) {
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = null,
-                tint = Color.White
+                tint = TextPrimary
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = message,
-                color = Color.White,
+                color = TextPrimary,
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun CapturingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "capturing_pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_alpha"
+    )
+
+    Surface(
+        color = Surface10,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier
+            .padding(24.dp)
+            .scale(scale)
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(32.dp)
+                .drawBehind {
+                    drawCircle(
+                        color = CyanGlow.copy(alpha = glowAlpha),
+                        radius = size.width * 0.8f
+                    )
+                }
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    color = CyanGlow,
+                    strokeWidth = 3.dp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "Verifying...",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
@@ -256,26 +385,41 @@ private fun CalculatorDisplay(
         verticalArrangement = Arrangement.Bottom
     ) {
         // Expression preview
-        if (expression.isNotEmpty()) {
+        AnimatedVisibility(
+            visible = expression.isNotEmpty(),
+            enter = fadeIn() + slideInVertically { -10 },
+            exit = fadeOut() + slideOutVertically { -10 }
+        ) {
             Text(
                 text = expression,
                 fontSize = 24.sp,
-                color = Color.Gray,
+                color = TextSecondary,
                 maxLines = 1
             )
+        }
+        if (expression.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Main display
-        Text(
-            text = display,
-            fontSize = if (display.length > 10) 48.sp else 64.sp,
-            fontWeight = FontWeight.Light,
-            color = Color.White,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Main display with animated text change
+        AnimatedContent(
+            targetState = display,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(100)) with
+                fadeOut(animationSpec = tween(100))
+            },
+            label = "display_change"
+        ) { targetDisplay ->
+            Text(
+                text = targetDisplay,
+                fontSize = if (targetDisplay.length > 10) 48.sp else 64.sp,
+                fontWeight = FontWeight.Light,
+                color = TextPrimary,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
@@ -290,39 +434,41 @@ private fun CalculatorKeypad(
     onPercentClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val view = LocalView.current
+    val hapticFeedback = {
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Row 1: Clear, Delete, %, Divide
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            KeyButton(
+            FunctionButton(
                 text = "AC",
-                onClick = onClearClick,
-                backgroundColor = Color(0xFF2C2C2E),
-                textColor = Color(0xFFFF453A),
-                modifier = Modifier.weight(1f)
+                onClick = { hapticFeedback(); onClearClick() },
+                modifier = Modifier.weight(1f),
+                accentColor = CrimsonSecurity
             )
-            IconKeyButton(
+            IconFunctionButton(
                 icon = Icons.Default.ArrowBack,
-                onClick = onDeleteClick,
-                backgroundColor = Color(0xFF2C2C2E),
-                contentColor = Color(0xFFFF9F0A),
-                modifier = Modifier.weight(1f)
+                onClick = { hapticFeedback(); onDeleteClick() },
+                modifier = Modifier.weight(1f),
+                accentColor = AmberAlert
             )
-            KeyButton(
+            FunctionButton(
                 text = "%",
-                onClick = onPercentClick,
-                backgroundColor = Color(0xFF2C2C2E),
-                textColor = Color(0xFF64D2FF),
-                modifier = Modifier.weight(1f)
+                onClick = { hapticFeedback(); onPercentClick() },
+                modifier = Modifier.weight(1f),
+                accentColor = CyanGlow
             )
             OperationButton(
                 operation = Operation.DIVIDE,
-                onClick = { onOperationClick(Operation.DIVIDE) },
+                onClick = { hapticFeedback(); onOperationClick(Operation.DIVIDE) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -330,14 +476,14 @@ private fun CalculatorKeypad(
         // Row 2: 7, 8, 9, Multiply
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            NumberButton(number = "7", onClick = { onNumberClick("7") }, modifier = Modifier.weight(1f))
-            NumberButton(number = "8", onClick = { onNumberClick("8") }, modifier = Modifier.weight(1f))
-            NumberButton(number = "9", onClick = { onNumberClick("9") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "7", onClick = { hapticFeedback(); onNumberClick("7") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "8", onClick = { hapticFeedback(); onNumberClick("8") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "9", onClick = { hapticFeedback(); onNumberClick("9") }, modifier = Modifier.weight(1f))
             OperationButton(
                 operation = Operation.MULTIPLY,
-                onClick = { onOperationClick(Operation.MULTIPLY) },
+                onClick = { hapticFeedback(); onOperationClick(Operation.MULTIPLY) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -345,14 +491,14 @@ private fun CalculatorKeypad(
         // Row 3: 4, 5, 6, Subtract
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            NumberButton(number = "4", onClick = { onNumberClick("4") }, modifier = Modifier.weight(1f))
-            NumberButton(number = "5", onClick = { onNumberClick("5") }, modifier = Modifier.weight(1f))
-            NumberButton(number = "6", onClick = { onNumberClick("6") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "4", onClick = { hapticFeedback(); onNumberClick("4") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "5", onClick = { hapticFeedback(); onNumberClick("5") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "6", onClick = { hapticFeedback(); onNumberClick("6") }, modifier = Modifier.weight(1f))
             OperationButton(
                 operation = Operation.SUBTRACT,
-                onClick = { onOperationClick(Operation.SUBTRACT) },
+                onClick = { hapticFeedback(); onOperationClick(Operation.SUBTRACT) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -360,38 +506,36 @@ private fun CalculatorKeypad(
         // Row 4: 1, 2, 3, Add
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            NumberButton(number = "1", onClick = { onNumberClick("1") }, modifier = Modifier.weight(1f))
-            NumberButton(number = "2", onClick = { onNumberClick("2") }, modifier = Modifier.weight(1f))
-            NumberButton(number = "3", onClick = { onNumberClick("3") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "1", onClick = { hapticFeedback(); onNumberClick("1") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "2", onClick = { hapticFeedback(); onNumberClick("2") }, modifier = Modifier.weight(1f))
+            NumberButton(number = "3", onClick = { hapticFeedback(); onNumberClick("3") }, modifier = Modifier.weight(1f))
             OperationButton(
                 operation = Operation.ADD,
-                onClick = { onOperationClick(Operation.ADD) },
+                onClick = { hapticFeedback(); onOperationClick(Operation.ADD) },
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Row 5: 0, ., =
+        // Row 5: 0, ., =, M
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             NumberButton(
                 number = "0",
-                onClick = { onNumberClick("0") },
+                onClick = { hapticFeedback(); onNumberClick("0") },
                 modifier = Modifier.weight(1f)
             )
-            KeyButton(
-                text = ".",
-                onClick = onDecimalClick,
-                backgroundColor = Color(0xFF2C2C2E),
-                textColor = Color.White,
+            NumberButton(
+                number = ".",
+                onClick = { hapticFeedback(); onDecimalClick() },
                 modifier = Modifier.weight(1f)
             )
-            EqualsButton(onClick = onEqualsClick, modifier = Modifier.weight(1f))
-            // Add hidden vault access button (looks like a calculator memory button)
-            VaultAccessButton(onClick = { /* handled via equals with PIN pattern */ }, modifier = Modifier.weight(1f))
+            EqualsButton(onClick = { hapticFeedback(); onEqualsClick() }, modifier = Modifier.weight(1f))
+            // Hidden vault access button disguised as memory button
+            VaultAccessButton(onClick = { hapticFeedback() }, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -402,12 +546,46 @@ private fun NumberButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    KeyButton(
+    NeumorphicButton(
         text = number,
         onClick = onClick,
-        backgroundColor = Color(0xFF2C2C2E),
-        textColor = Color.White,
-        modifier = modifier
+        modifier = modifier,
+        backgroundColor = CalculatorButtonNumber,
+        textColor = TextPrimary,
+        isOperation = false
+    )
+}
+
+@Composable
+private fun FunctionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accentColor: Color
+) {
+    NeumorphicButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        backgroundColor = CalculatorButtonFunction,
+        textColor = accentColor,
+        isOperation = false
+    )
+}
+
+@Composable
+private fun IconFunctionButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accentColor: Color
+) {
+    NeumorphicIconButton(
+        icon = icon,
+        onClick = onClick,
+        modifier = modifier,
+        backgroundColor = CalculatorButtonFunction,
+        contentColor = accentColor
     )
 }
 
@@ -425,12 +603,13 @@ private fun OperationButton(
         Operation.MODULO -> "%"
     }
 
-    KeyButton(
+    NeumorphicButton(
         text = symbol,
         onClick = onClick,
-        backgroundColor = Color(0xFFFF9F0A),
-        textColor = Color.Black,
-        modifier = modifier
+        modifier = modifier,
+        backgroundColor = CyanGlow.copy(alpha = 0.2f),
+        textColor = CyanGlow,
+        isOperation = true
     )
 }
 
@@ -439,77 +618,49 @@ private fun EqualsButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = AnimationSpecs.ButtonPress,
+        label = "equals_scale"
+    )
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .scale(scale)
             .clip(CircleShape)
-            .background(Color(0xFF30D158))
-            .clickable(onClick = onClick),
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        if (isPressed) EmeraldSuccess else EmeraldSuccess.copy(alpha = 0.9f),
+                        if (isPressed) EmeraldSuccess.copy(alpha = 0.7f) else EmeraldSuccess
+                    )
+                )
+            )
+            .drawBehind {
+                // Outer glow effect
+                if (!isPressed) {
+                    drawCircle(
+                        color = EmeraldSuccess.copy(alpha = 0.3f),
+                        radius = size.width * 0.6f,
+                        center = center
+                    )
+                }
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "=",
             fontSize = 32.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.Black
-        )
-    }
-}
-
-@Composable
-private fun KeyButton(
-    text: String,
-    onClick: () -> Unit,
-    backgroundColor: Color,
-    textColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Medium,
-            color = textColor
-        )
-    }
-}
-
-@Composable
-private fun IconKeyButton(
-    icon: ImageVector,
-    onClick: () -> Unit,
-    backgroundColor: Color,
-    contentColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(28.dp)
+            fontWeight = FontWeight.SemiBold,
+            color = VoidBlack
         )
     }
 }
@@ -519,24 +670,150 @@ private fun VaultAccessButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Hidden vault button disguised as calculator memory button
+    NeumorphicButton(
+        text = "M",
+        onClick = onClick,
+        modifier = modifier,
+        backgroundColor = CalculatorButtonFunction,
+        textColor = CyanGlow.copy(alpha = 0.7f),
+        isOperation = false
+    )
+}
+
+@Composable
+private fun NeumorphicButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color,
+    textColor: Color,
+    isOperation: Boolean = false
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Spring animation for scale
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        animationSpec = spring(
+            dampingRatio = if (isOperation) 0.5f else 0.6f,
+            stiffness = if (isOperation) 400f else 300f
+        ),
+        label = "button_scale"
+    )
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .scale(scale)
             .clip(CircleShape)
-            .background(Color(0xFF2C2C2E))
+            .drawBehind {
+                // Neumorphic shadow effects
+                if (!isPressed) {
+                    // Top-left highlight (embossed effect)
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.08f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.3f, size.height * 0.3f)
+                    )
+                    // Bottom-right shadow
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.4f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.7f, size.height * 0.7f)
+                    )
+                } else {
+                    // Pressed state - inverted shadows (debossed)
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.3f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.35f, size.height * 0.35f)
+                    )
+                    // Inner highlight for pressed state
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.03f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.65f, size.height * 0.65f)
+                    )
+                }
+            }
+            .background(
+                color = if (isPressed) backgroundColor.copy(alpha = 0.8f) else backgroundColor,
+                shape = CircleShape
+            )
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "M",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF64D2FF)
+            text = text,
+            fontSize = if (isOperation) 32.sp else 28.sp,
+            fontWeight = if (isOperation) FontWeight.SemiBold else FontWeight.Medium,
+            color = textColor
+        )
+    }
+}
+
+@Composable
+private fun NeumorphicIconButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color,
+    contentColor: Color
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        animationSpec = AnimationSpecs.ButtonPress,
+        label = "icon_button_scale"
+    )
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .scale(scale)
+            .clip(CircleShape)
+            .drawBehind {
+                if (!isPressed) {
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.08f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.3f, size.height * 0.3f)
+                    )
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.4f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.7f, size.height * 0.7f)
+                    )
+                } else {
+                    drawCircle(
+                        color = Color.Black.copy(alpha = 0.3f),
+                        radius = size.width * 0.5f,
+                        center = Offset(size.width * 0.35f, size.height * 0.35f)
+                    )
+                }
+            }
+            .background(
+                color = if (isPressed) backgroundColor.copy(alpha = 0.8f) else backgroundColor,
+                shape = CircleShape
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(26.dp)
         )
     }
 }
