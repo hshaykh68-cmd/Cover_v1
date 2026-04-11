@@ -100,197 +100,196 @@ fun PremiumScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-            // Loading or error state
-            when (state) {
-                is PremiumUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Pulsing glow behind spinner
-                        val infiniteTransition = rememberInfiniteTransition(label = "loading_glow")
-                        val glowAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.2f,
-                            targetValue = 0.5f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "glow"
-                        )
+                // Loading or error state
+                when (state) {
+                    is PremiumUiState.Loading -> {
+                        Box(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Pulsing glow behind spinner
+                            val infiniteTransition = rememberInfiniteTransition(label = "loading_glow")
+                            val glowAlpha by infiniteTransition.animateFloat(
+                                initialValue = 0.2f,
+                                targetValue = 0.5f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1000),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "glow"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .drawBehind {
+                                        drawCircle(
+                                            color = CyanGlow.copy(alpha = glowAlpha),
+                                            radius = size.width / 2
+                                        )
+                                    }
+                            )
+                            CircularProgressIndicator(
+                                color = CyanGlow,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
+                    is PremiumUiState.Error -> {
                         Box(
                             modifier = Modifier
-                                .size(80.dp)
-                                .drawBehind {
-                                    drawCircle(
-                                        color = CyanGlow.copy(alpha = glowAlpha),
-                                        radius = size.width / 2
-                                    )
-                                }
-                        )
-                        CircularProgressIndicator(
-                            color = CyanGlow,
-                            strokeWidth = 3.dp
-                        )
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(CrimsonSecurity.copy(alpha = 0.15f))
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = (state as PremiumUiState.Error).message,
+                                color = CrimsonSecurity,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
-                }
-                is PremiumUiState.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(CrimsonSecurity.copy(alpha = 0.15f))
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = (state as PremiumUiState.Error).message,
-                            color = CrimsonSecurity,
-                            textAlign = TextAlign.Center,
+                    else -> {
+                        val loadedState = state as? PremiumUiState.Loaded
+                        
+                        // Pricing cards
+                        PricingCard(
+                            title = "Lifetime",
+                            price = loadedState?.lifetimePrice ?: "$24.99",
+                            subtitle = "One-time payment",
+                            features = listOf(
+                                "Unlimited storage",
+                                "All premium features",
+                                "No ads forever",
+                                "Priority support"
+                            ),
+                            isPopular = true,
+                            isBestValue = true,
+                            onClick = { viewModel.purchaseLifetime() },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        PricingCard(
+                            title = "Yearly",
+                            price = loadedState?.yearlyPrice ?: "$9.99",
+                            subtitle = "Save 58%",
+                            originalPrice = loadedState?.monthlyPrice?.let { "$${(1.99 * 12).toInt()}" } ?: "$23.88",
+                            features = listOf(
+                                "Unlimited storage",
+                                "All premium features",
+                                "No ads"
+                            ),
+                            isPopular = false,
+                            isBestValue = false,
+                            onClick = { viewModel.purchaseYearly() },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        PricingCard(
+                            title = "Monthly",
+                            price = loadedState?.monthlyPrice ?: "$1.99",
+                            subtitle = "Flexible",
+                            features = listOf(
+                                "Unlimited storage",
+                                "All premium features",
+                                "Cancel anytime"
+                            ),
+                            isPopular = false,
+                            isBestValue = false,
+                            onClick = { viewModel.purchaseMonthly() },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
-                else -> {
-                    val loadedState = state as? PremiumUiState.Loaded
-                    
-                    // Pricing cards
-                    PricingCard(
-                        title = "Lifetime",
-                        price = loadedState?.lifetimePrice ?: "$24.99",
-                        subtitle = "One-time payment",
-                        features = listOf(
-                            "Unlimited storage",
-                            "All premium features",
-                            "No ads forever",
-                            "Priority support"
-                        ),
-                        isPopular = true,
-                        isBestValue = true,
-                        onClick = { viewModel.purchaseLifetime() },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    PricingCard(
-                        title = "Yearly",
-                        price = loadedState?.yearlyPrice ?: "$9.99",
-                        subtitle = "Save 58%",
-                        originalPrice = loadedState?.monthlyPrice?.let { "$${(1.99 * 12).toInt()}" } ?: "$23.88",
-                        features = listOf(
-                            "Unlimited storage",
-                            "All premium features",
-                            "No ads"
-                        ),
-                        isPopular = false,
-                        isBestValue = false,
-                        onClick = { viewModel.purchaseYearly() },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    PricingCard(
-                        title = "Monthly",
-                        price = loadedState?.monthlyPrice ?: "$1.99",
-                        subtitle = "Flexible",
-                        features = listOf(
-                            "Unlimited storage",
-                            "All premium features",
-                            "Cancel anytime"
-                        ),
-                        isPopular = false,
-                        isBestValue = false,
-                        onClick = { viewModel.purchaseMonthly() },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Features list
+                Text(
+                    text = "Premium Features",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                FeatureItem(
+                    icon = Icons.Default.Cloud,
+                    title = "Unlimited Storage",
+                    description = "Hide unlimited photos, videos & files"
+                )
+                
+                FeatureItem(
+                    icon = Icons.Default.DoNotDisturb,
+                    title = "Ad-Free Experience",
+                    description = "No interruptions while using the app"
+                )
+                
+                FeatureItem(
+                    icon = Icons.Default.VisibilityOff,
+                    title = "Advanced App Hiding",
+                    description = "Hide apps completely from launcher"
+                )
+                
+                FeatureItem(
+                    icon = Icons.Default.CameraAlt,
+                    title = "Intruder Alerts",
+                    description = "Unlimited intruder photo capture"
+                )
+                
+                FeatureItem(
+                    icon = Icons.Default.Help,
+                    title = "Priority Support",
+                    description = "Get help within 24 hours"
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Terms
+                Text(
+                    text = "Subscriptions auto-renew unless cancelled. Manage in Google Play Store.",
+                    fontSize = 12.sp,
+                    color = TextTertiary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Features list
-            Text(
-                text = "Premium Features",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+        }
+        
+        // Purchase success dialog
+        if (state is PremiumUiState.PurchaseSuccess) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSuccess() },
+                title = { Text("Welcome to Premium!", color = TextPrimary) },
+                text = { Text("Thank you for upgrading. You now have access to all premium features.", color = TextSecondary) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.dismissSuccess()
+                            onNavigateBack()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EmeraldSuccess,
+                            contentColor = VoidBlack
+                        )
+                    ) {
+                        Text("Continue", fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                containerColor = Surface15,
+                titleContentColor = TextPrimary,
+                textContentColor = TextSecondary
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            FeatureItem(
-                icon = Icons.Default.Cloud,
-                title = "Unlimited Storage",
-                description = "Hide unlimited photos, videos & files"
-            )
-            
-            FeatureItem(
-                icon = Icons.Default.DoNotDisturb,
-                title = "Ad-Free Experience",
-                description = "No interruptions while using the app"
-            )
-            
-            FeatureItem(
-                icon = Icons.Default.VisibilityOff,
-                title = "Advanced App Hiding",
-                description = "Hide apps completely from launcher"
-            )
-            
-            FeatureItem(
-                icon = Icons.Default.CameraAlt,
-                title = "Intruder Alerts",
-                description = "Unlimited intruder photo capture"
-            )
-            
-            FeatureItem(
-                icon = Icons.Default.Help,
-                title = "Priority Support",
-                description = "Get help within 24 hours"
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Terms
-            Text(
-                text = "Subscriptions auto-renew unless cancelled. Manage in Google Play Store.",
-                fontSize = 12.sp,
-                color = TextTertiary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
-    
-    // Purchase success dialog
-    if (state is PremiumUiState.PurchaseSuccess) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissSuccess() },
-            title = { Text("Welcome to Premium!", color = TextPrimary) },
-            text = { Text("Thank you for upgrading. You now have access to all premium features.", color = TextSecondary) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.dismissSuccess()
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = EmeraldSuccess,
-                        contentColor = VoidBlack
-                    )
-                ) {
-                    Text("Continue", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            containerColor = Surface15,
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary
-        )
-    }
-}
-}
 }
 
 @Composable
