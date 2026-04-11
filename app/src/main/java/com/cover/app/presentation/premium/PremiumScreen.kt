@@ -290,6 +290,8 @@ fun PremiumScreen(
         )
     }
 }
+}
+}
 
 @Composable
 private fun PremiumHeader() {
