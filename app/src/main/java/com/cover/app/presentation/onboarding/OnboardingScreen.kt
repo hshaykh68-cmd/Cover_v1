@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.cover.app.core.animation.AnimationSpecs
 import com.cover.app.core.animation.rememberLifecycleAwareInfiniteTransition
 import com.cover.app.core.theme.*
 import com.cover.app.data.security.PinManager

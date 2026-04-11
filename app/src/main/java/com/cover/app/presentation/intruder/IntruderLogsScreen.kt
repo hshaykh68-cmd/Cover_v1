@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cover.app.core.animation.AnimationSpecs
 import com.cover.app.core.theme.*
 import com.cover.app.domain.model.IntruderLog
 import com.cover.app.presentation.components.CoachMarkOverlay

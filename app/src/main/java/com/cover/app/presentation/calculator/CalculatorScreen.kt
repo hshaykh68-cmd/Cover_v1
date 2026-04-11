@@ -371,6 +371,7 @@ private fun CapturingIndicator() {
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun CalculatorDisplay(
     display: String,
