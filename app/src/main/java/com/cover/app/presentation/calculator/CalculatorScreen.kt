@@ -546,14 +546,25 @@ private fun NumberButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    NeumorphicButton(
-        text = number,
-        onClick = onClick,
-        modifier = modifier,
-        backgroundColor = CalculatorButtonNumber,
-        textColor = TextPrimary,
-        isOperation = false
-    )
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .neumorphicButton(
+                onClick = onClick,
+                shape = CircleShape,
+                elevation = 12.dp,
+                backgroundColor = CalculatorButtonNumber,
+                pressedBackgroundColor = CalculatorButtonNumber.copy(alpha = 0.8f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = number,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextPrimary
+        )
+    }
 }
 
 @Composable
@@ -563,14 +574,25 @@ private fun FunctionButton(
     modifier: Modifier = Modifier,
     accentColor: Color
 ) {
-    NeumorphicButton(
-        text = text,
-        onClick = onClick,
-        modifier = modifier,
-        backgroundColor = CalculatorButtonFunction,
-        textColor = accentColor,
-        isOperation = false
-    )
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .neumorphicButton(
+                onClick = onClick,
+                shape = CircleShape,
+                elevation = 12.dp,
+                backgroundColor = CalculatorButtonFunction,
+                pressedBackgroundColor = CalculatorButtonFunction.copy(alpha = 0.8f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Medium,
+            color = accentColor
+        )
+    }
 }
 
 @Composable
@@ -580,13 +602,25 @@ private fun IconFunctionButton(
     modifier: Modifier = Modifier,
     accentColor: Color
 ) {
-    NeumorphicIconButton(
-        icon = icon,
-        onClick = onClick,
-        modifier = modifier,
-        backgroundColor = CalculatorButtonFunction,
-        contentColor = accentColor
-    )
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .neumorphicButton(
+                onClick = onClick,
+                shape = CircleShape,
+                elevation = 12.dp,
+                backgroundColor = CalculatorButtonFunction,
+                pressedBackgroundColor = CalculatorButtonFunction.copy(alpha = 0.8f)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accentColor,
+            modifier = Modifier.size(26.dp)
+        )
+    }
 }
 
 @Composable
@@ -603,14 +637,45 @@ private fun OperationButton(
         Operation.MODULO -> "%"
     }
 
-    NeumorphicButton(
-        text = symbol,
-        onClick = onClick,
-        modifier = modifier,
-        backgroundColor = CyanGlow.copy(alpha = 0.2f),
-        textColor = CyanGlow,
-        isOperation = true
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    // Operation buttons use stiffer spring animation
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+        label = "operation_scale"
     )
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .scale(scale)
+            .clip(CircleShape)
+            .background(
+                color = if (isPressed) CyanGlow.copy(alpha = 0.15f) else CyanGlow.copy(alpha = 0.2f),
+                shape = CircleShape
+            )
+            .neumorphic(
+                shape = CircleShape,
+                elevation = 12.dp,
+                pressed = isPressed,
+                backgroundColor = Color.Transparent,
+                pressedBackgroundColor = Color.Transparent
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = symbol,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = CyanGlow
+        )
+    }
 }
 
 @Composable
@@ -670,150 +735,23 @@ private fun VaultAccessButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    NeumorphicButton(
-        text = "M",
-        onClick = onClick,
-        modifier = modifier,
-        backgroundColor = CalculatorButtonFunction,
-        textColor = CyanGlow.copy(alpha = 0.7f),
-        isOperation = false
-    )
-}
-
-@Composable
-private fun NeumorphicButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    backgroundColor: Color,
-    textColor: Color,
-    isOperation: Boolean = false
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    // Spring animation for scale
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.93f else 1f,
-        animationSpec = spring(
-            dampingRatio = if (isOperation) 0.5f else 0.6f,
-            stiffness = if (isOperation) 400f else 300f
-        ),
-        label = "button_scale"
-    )
-
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .scale(scale)
-            .clip(CircleShape)
-            .drawBehind {
-                // Neumorphic shadow effects
-                if (!isPressed) {
-                    // Top-left highlight (embossed effect)
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.08f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.3f, size.height * 0.3f)
-                    )
-                    // Bottom-right shadow
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.4f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.7f, size.height * 0.7f)
-                    )
-                } else {
-                    // Pressed state - inverted shadows (debossed)
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.3f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.35f, size.height * 0.35f)
-                    )
-                    // Inner highlight for pressed state
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.03f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.65f, size.height * 0.65f)
-                    )
-                }
-            }
-            .background(
-                color = if (isPressed) backgroundColor.copy(alpha = 0.8f) else backgroundColor,
-                shape = CircleShape
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
+            .neumorphicButton(
+                onClick = onClick,
+                shape = CircleShape,
+                elevation = 12.dp,
+                backgroundColor = CalculatorButtonFunction,
+                pressedBackgroundColor = CalculatorButtonFunction.copy(alpha = 0.8f)
             ),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = text,
-            fontSize = if (isOperation) 32.sp else 28.sp,
-            fontWeight = if (isOperation) FontWeight.SemiBold else FontWeight.Medium,
-            color = textColor
-        )
-    }
-}
-
-@Composable
-private fun NeumorphicIconButton(
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    backgroundColor: Color,
-    contentColor: Color
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.93f else 1f,
-        animationSpec = AnimationSpecs.ButtonPress,
-        label = "icon_button_scale"
-    )
-
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .scale(scale)
-            .clip(CircleShape)
-            .drawBehind {
-                if (!isPressed) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.08f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.3f, size.height * 0.3f)
-                    )
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.4f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.7f, size.height * 0.7f)
-                    )
-                } else {
-                    drawCircle(
-                        color = Color.Black.copy(alpha = 0.3f),
-                        radius = size.width * 0.5f,
-                        center = Offset(size.width * 0.35f, size.height * 0.35f)
-                    )
-                }
-            }
-            .background(
-                color = if (isPressed) backgroundColor.copy(alpha = 0.8f) else backgroundColor,
-                shape = CircleShape
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(26.dp)
+            text = "M",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Medium,
+            color = CyanGlow.copy(alpha = 0.7f)
         )
     }
 }

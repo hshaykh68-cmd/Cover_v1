@@ -25,21 +25,28 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cover.app.domain.model.HiddenItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MediaViewerScreen(
-    items: List<HiddenItem>,
     initialIndex: Int,
-    vaultId: String,
-    pin: String,
     onNavigateBack: () -> Unit,
     onDeleteItem: (HiddenItem) -> Unit,
     onExportItem: (HiddenItem) -> Unit,
     viewModel: MediaViewerViewModel = hiltViewModel()
 ) {
+    // Load items from ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.loadItems()
+    }
+    
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val vaultId = viewModel.getVaultId() ?: ""
+    val pin = viewModel.getPin() ?: ""
+    
     val pagerState = rememberPagerState(
         initialPage = initialIndex,
         pageCount = { items.size }
@@ -65,13 +72,15 @@ fun MediaViewerScreen(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            val item = items[page]
-            MediaPage(
-                item = item,
-                vaultId = vaultId,
-                pin = pin,
-                viewModel = viewModel
-            )
+            if (page < items.size) {
+                val item = items[page]
+                MediaPage(
+                    item = item,
+                    vaultId = vaultId,
+                    pin = pin,
+                    viewModel = viewModel
+                )
+            }
         }
         
         // Controls overlay

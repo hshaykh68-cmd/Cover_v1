@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cover.app.data.repository.VaultRepository
+import com.cover.app.data.security.SessionManager
 import com.cover.app.data.storage.SecureStorageManager
 import com.cover.app.domain.model.HiddenItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,11 +20,43 @@ import javax.inject.Inject
 @HiltViewModel
 class MediaViewerViewModel @Inject constructor(
     private val vaultRepository: VaultRepository,
-    private val secureStorage: SecureStorageManager
+    private val secureStorage: SecureStorageManager,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ViewerState())
     val state: StateFlow<ViewerState> = _state.asStateFlow()
+    
+    private val _items = MutableStateFlow<List<HiddenItem>>(emptyList())
+    val items: StateFlow<List<HiddenItem>> = _items.asStateFlow()
+    
+    /**
+     * Load all items from the current vault using SessionManager
+     */
+    fun loadItems() {
+        viewModelScope.launch {
+            val vaultId = sessionManager.getVaultId() ?: return@launch
+            vaultRepository.getItemsByVault(vaultId)
+                .collect { items ->
+                    _items.value = items
+                }
+        }
+    }
+    
+    /**
+     * Get the current PIN from session
+     */
+    fun getPin(): String? = sessionManager.getPin()
+    
+    /**
+     * Get the current vault ID from session
+     */
+    fun getVaultId(): String? = sessionManager.getVaultId()
+    
+    /**
+     * Check if there's an active session
+     */
+    fun hasSession(): Boolean = sessionManager.hasActiveSession()
 
     fun setCurrentIndex(index: Int) {
         _state.value = _state.value.copy(currentIndex = index)
@@ -90,5 +123,6 @@ data class ViewerState(
     val currentIndex: Int = 0,
     val showControls: Boolean = true,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val items: List<HiddenItem> = emptyList()
 )

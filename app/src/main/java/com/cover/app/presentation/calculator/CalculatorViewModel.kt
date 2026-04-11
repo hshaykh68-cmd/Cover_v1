@@ -8,6 +8,7 @@ import com.cover.app.data.remoteconfig.FeatureFlag
 import com.cover.app.data.remoteconfig.PromotionManager
 import com.cover.app.data.security.LockoutManager
 import com.cover.app.data.security.PinManager
+import com.cover.app.data.security.SessionManager
 import com.cover.app.data.security.ShakeDetector
 import com.cover.app.data.vault.DecoyVaultManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +27,8 @@ class CalculatorViewModel @Inject constructor(
     private val shakeDetector: ShakeDetector,
     private val decoyVaultManager: DecoyVaultManager,
     private val pinManager: PinManager,
-    private val promotionManager: PromotionManager
+    private val promotionManager: PromotionManager,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CalculatorState())
@@ -298,6 +300,16 @@ class CalculatorViewModel @Inject constructor(
             if (isValid) {
                 // Success - reset attempts
                 lockoutManager.resetAttempts()
+                
+                // Start session with PIN and vault ID
+                val vaultId = if (isDecoy) {
+                    pinManager.getDecoyVaultId(pin)
+                } else {
+                    pinManager.getRealVaultId(pin)
+                }
+                vaultId?.let { 
+                    sessionManager.startSession(pin, it, isDecoy)
+                }
                 
                 _pinDetectionState.value = if (isDecoy) {
                     PinDetectionState.DecoyVaultDetected(pin)

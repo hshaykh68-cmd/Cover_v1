@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.cover.app.core.animation.rememberLifecycleAwareInfiniteTransition
 import com.cover.app.core.theme.*
 import com.cover.app.data.security.PinManager
 
@@ -180,7 +181,7 @@ fun OnboardingScreen(
 private fun WelcomeStep(
     onNext: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "shield_pulse")
+    val infiniteTransition = rememberLifecycleAwareInfiniteTransition(label = "shield_pulse")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
         targetValue = 0.5f,
@@ -461,7 +462,7 @@ private fun PinSetupStep(
 private fun CompleteStep(
     onFinish: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "complete_pulse")
+    val infiniteTransition = rememberLifecycleAwareInfiniteTransition(label = "complete_pulse")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
         targetValue = 0.5f,

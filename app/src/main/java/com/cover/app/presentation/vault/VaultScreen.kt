@@ -2,16 +2,20 @@ package com.cover.app.presentation.vault
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Adb
@@ -48,8 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
 import com.cover.app.core.animation.AnimationSpecs
+import com.cover.app.core.animation.rememberLifecycleAwareInfiniteTransition
 import com.cover.app.core.theme.*
 import com.cover.app.domain.model.HiddenItem
 import com.cover.app.presentation.components.BannerAd
@@ -62,9 +66,11 @@ fun VaultScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSettings: (() -> Unit)? = null,
     onNavigateToUpgrade: () -> Unit,
+    onOpenItem: (HiddenItem, List<HiddenItem>) -> Unit = { _, _ -> },
     viewModel: VaultViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val thumbnails by viewModel.thumbnails.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Handle events
@@ -78,11 +84,10 @@ fun VaultScreen(
     var coachMarkTitle by remember { mutableStateOf("") }
     var coachMarkDesc by remember { mutableStateOf("") }
     
-    // Show first-time coach marks
+    // Show first-time coach marks only if not shown before
     LaunchedEffect(Unit) {
-        // Check if first time (would use DataStore in production)
         delay(500)
-        if (state.items.isEmpty()) {
+        if (state.items.isEmpty() && !viewModel.isCoachMarkShown()) {
             coachMarkTitle = "Welcome to Your Vault"
             coachMarkDesc = "This is your secure space. Tap + to import photos, videos, or files. Check Intruder Logs to see failed access attempts."
             showCoachMark = true
@@ -105,7 +110,7 @@ fun VaultScreen(
                     showAddDialog = true
                 }
                 is VaultEvent.OpenItem -> {
-                    snackbarHostState.showSnackbar("Opening ${event.item.originalName}...")
+                    onOpenItem(event.item, state.items)
                 }
                 is VaultEvent.ShowItemOptions -> {
                     selectedItem = event.item
@@ -120,7 +125,10 @@ fun VaultScreen(
         isVisible = showCoachMark,
         title = coachMarkTitle,
         description = coachMarkDesc,
-        onDismiss = { showCoachMark = false }
+        onDismiss = { 
+            showCoachMark = false
+            viewModel.markCoachMarkShown()
+        }
     )
     
     // Add Item Dialog
@@ -238,7 +246,7 @@ fun VaultScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         // Pulsing glow behind indicator
-                        val infiniteTransition = rememberInfiniteTransition(label = "loading_glow")
+                        val infiniteTransition = rememberLifecycleAwareInfiniteTransition(label = "loading_glow")
                         val glowAlpha by infiniteTransition.animateFloat(
                             initialValue = 0.2f,
                             targetValue = 0.5f,
@@ -294,9 +302,10 @@ fun VaultScreen(
                         onFilterSelect = { selectedFilter = it },
                         onItemClick = viewModel::onItemClick,
                         onItemLongPress = viewModel::onItemLongPress,
+                        thumbnails = thumbnails,
                         totalSize = state.items.sumOf { it.size },
                         onUpgradeClick = onNavigateToUpgrade,
-                        isPremium = false // TODO: Get from state
+                        isPremium = state.isPremium
                     )
                 }
             }
@@ -340,82 +349,94 @@ private fun VaultDashboard(
     onItemLongPress: (HiddenItem) -> Unit,
     totalSize: Long,
     onUpgradeClick: () -> Unit,
-    isPremium: Boolean
+    isPremium: Boolean,
+    thumbnails: Map<String, Bitmap?> = emptyMap()
 ) {
-    val scrollState = rememberScrollState()
+    // Filter items based on selection
+    val filteredItems = when (selectedFilter) {
+        FilterType.PHOTOS -> items.filterIsInstance<HiddenItem.Photo>()
+        FilterType.VIDEOS -> items.filterIsInstance<HiddenItem.Video>()
+        FilterType.FILES -> items.filter { it !is HiddenItem.Photo && it !is HiddenItem.Video }
+        else -> items
+    }
     
-    Column(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 100.dp),
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp)
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 16.dp)
     ) {
-        // Storage indicator
-        StorageIndicator(
-            usedBytes = totalSize,
-            isPremium = isPremium,
-            onUpgradeClick = onUpgradeClick
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Quick filters
-        QuickFilterChips(
-            selectedFilter = selectedFilter,
-            onFilterSelect = onFilterSelect,
-            itemCounts = mapOf(
-                FilterType.ALL to items.size,
-                FilterType.PHOTOS to items.count { it is HiddenItem.Photo },
-                FilterType.VIDEOS to items.count { it is HiddenItem.Video },
-                FilterType.FILES to items.count { it !is HiddenItem.Photo && it !is HiddenItem.Video }
+        // Storage indicator - spans full width
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            StorageIndicator(
+                usedBytes = totalSize,
+                isPremium = isPremium,
+                onUpgradeClick = onUpgradeClick
             )
-        )
+        }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        // Quick filters - spans full width
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            QuickFilterChips(
+                selectedFilter = selectedFilter,
+                onFilterSelect = onFilterSelect,
+                itemCounts = mapOf(
+                    FilterType.ALL to items.size,
+                    FilterType.PHOTOS to items.count { it is HiddenItem.Photo },
+                    FilterType.VIDEOS to items.count { it is HiddenItem.Video },
+                    FilterType.FILES to items.count { it !is HiddenItem.Photo && it !is HiddenItem.Video }
+                ),
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        }
         
-        // Recent items section
+        // Recent items section header
         if (items.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    text = "Recent Items",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            
+            // Recent items - horizontal scroll within a full-width item
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                RecentItemsRow(
+                    items = items.take(6),
+                    onItemClick = onItemClick,
+                    onItemLongPress = onItemLongPress,
+                    thumbnails = thumbnails,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+        
+        // All items section header
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
-                text = "Recent Items",
+                text = "All Items",
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            RecentItemsRow(
-                items = items.take(6),
-                onItemClick = onItemClick,
-                onItemLongPress = onItemLongPress
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // All items grid
-        Text(
-            text = "All Items",
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary,
-            fontWeight = FontWeight.SemiBold
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Filter items based on selection
-        val filteredItems = when (selectedFilter) {
-            FilterType.PHOTOS -> items.filterIsInstance<HiddenItem.Photo>()
-            FilterType.VIDEOS -> items.filterIsInstance<HiddenItem.Video>()
-            FilterType.FILES -> items.filter { it !is HiddenItem.Photo && it !is HiddenItem.Video }
-            else -> items
         }
         
-        VaultGrid(
-            items = filteredItems,
-            onItemClick = onItemClick,
-            onItemLongPress = onItemLongPress
-        )
+        // Grid items
+        items(filteredItems, key = { it.id }) { item ->
+            val thumbnail = thumbnails[item.id]
+            VaultItemCard(
+                item = item,
+                thumbnail = thumbnail,
+                onClick = { onItemClick(item) },
+                onLongPress = { onItemLongPress(item) }
+            )
+        }
     }
 }
 
@@ -487,13 +508,15 @@ private fun StorageIndicator(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Animated progress bar with glow
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(Surface20)
             ) {
+                val maxWidthPx = constraints.maxWidth.toFloat()
+                
                 // Progress fill with gradient
                 Box(
                     modifier = Modifier
@@ -510,13 +533,14 @@ private fun StorageIndicator(
                         )
                 )
 
-                // Glow effect on leading edge
+                // Glow effect on leading edge - properly positioned based on actual width
                 if (animatedProgress > 0) {
+                    val glowOffset = with(LocalDensity.current) { (maxWidthPx * animatedProgress).toDp() }
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(4.dp)
-                            .offset(x = (animatedProgress * 1000).dp * 0.001f)
+                            .offset(x = glowOffset - 2.dp) // Center on the progress edge
                             .background(
                                 color = if (usedPercent > 0.9f) AmberAlert else CyanGlow,
                                 shape = RoundedCornerShape(2.dp)
@@ -551,10 +575,11 @@ private fun StorageIndicator(
 private fun QuickFilterChips(
     selectedFilter: FilterType?,
     onFilterSelect: (FilterType?) -> Unit,
-    itemCounts: Map<FilterType, Int>
+    itemCounts: Map<FilterType, Int>,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterType.entries.forEach { filter ->
@@ -601,19 +626,23 @@ private fun QuickFilterChips(
 private fun RecentItemsRow(
     items: List<HiddenItem>,
     onItemClick: (HiddenItem) -> Unit,
-    onItemLongPress: (HiddenItem) -> Unit
+    onItemLongPress: (HiddenItem) -> Unit,
+    thumbnails: Map<String, Bitmap?>,
+    modifier: Modifier = Modifier
 ) {
-    LazyHorizontalGrid(
-        rows = GridCells.Fixed(1),
-        modifier = Modifier
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+    
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .height(120.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(items, key = { it.id }) { item ->
+        items.forEach { item ->
+            val thumbnail = thumbnails[item.id]
             RecentItemCard(
                 item = item,
+                thumbnail = thumbnail,
                 onClick = { onItemClick(item) },
                 onLongPress = { onItemLongPress(item) }
             )
@@ -624,6 +653,7 @@ private fun RecentItemsRow(
 @Composable
 private fun RecentItemCard(
     item: HiddenItem,
+    thumbnail: Bitmap?,
     onClick: () -> Unit,
     onLongPress: () -> Unit
 ) {
@@ -671,12 +701,24 @@ private fun RecentItemCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = CyanGlow
-            )
+            // Show thumbnail if loaded, otherwise show icon
+            if (thumbnail != null) {
+                Image(
+                    bitmap = thumbnail.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = CyanGlow
+                )
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.originalName.take(10) + if (item.originalName.length > 10) "..." else "",
@@ -698,7 +740,7 @@ private fun EmptyVaultStateWithActions(
     modifier: Modifier = Modifier
 ) {
     // Animated glow behind icon
-    val infiniteTransition = rememberInfiniteTransition(label = "empty_glow")
+    val infiniteTransition = rememberLifecycleAwareInfiniteTransition(label = "empty_glow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.1f,
         targetValue = 0.25f,
@@ -867,7 +909,7 @@ private fun EmptyVaultState(
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "empty_glow")
+    val infiniteTransition = rememberLifecycleAwareInfiniteTransition(label = "empty_glow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.1f,
         targetValue = 0.25f,
@@ -933,32 +975,9 @@ private fun EmptyVaultState(
 }
 
 @Composable
-private fun VaultGrid(
-    items: List<HiddenItem>,
-    onItemClick: (HiddenItem) -> Unit,
-    onItemLongPress: (HiddenItem) -> Unit
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 100.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        items(items, key = { it.id }) { item ->
-            VaultItemCard(
-                item = item,
-                onClick = { onItemClick(item) },
-                onLongPress = { onItemLongPress(item) }
-            )
-        }
-    }
-}
-
-@Composable
 private fun VaultItemCard(
     item: HiddenItem,
+    thumbnail: Bitmap?,
     onClick: () -> Unit,
     onLongPress: () -> Unit
 ) {
@@ -973,8 +992,8 @@ private fun VaultItemCard(
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF1C1C1E))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface15)
             .clickable(onClick = onClick)
             .padding(8.dp)
     ) {
@@ -983,17 +1002,29 @@ private fun VaultItemCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            // Show thumbnail if loaded, otherwise show icon
+            if (thumbnail != null) {
+                Image(
+                    bitmap = thumbnail.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = CyanGlow
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = item.originalName,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White,
+                color = TextPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
@@ -1002,7 +1033,7 @@ private fun VaultItemCard(
             Text(
                 text = formatFileSize(item.size),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = TextSecondary
             )
         }
     }
@@ -1026,32 +1057,37 @@ private fun AddItemDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add to Vault") },
+        title = { Text("Add to Vault", color = TextPrimary) },
         text = {
             Column {
                 ListItem(
-                    headlineContent = { Text("Import Photos/Videos") },
-                    leadingContent = { Icon(Icons.Default.Image, null) },
+                    headlineContent = { Text("Import Photos/Videos", color = TextPrimary) },
+                    leadingContent = { Icon(Icons.Default.Image, null, tint = CyanGlow) },
                     modifier = Modifier.clickable(onClick = onImportPhotos)
                 )
                 ListItem(
-                    headlineContent = { Text("Take Photo") },
-                    leadingContent = { Icon(Icons.Default.PhotoCamera, null) },
+                    headlineContent = { Text("Take Photo", color = TextPrimary) },
+                    leadingContent = { Icon(Icons.Default.PhotoCamera, null, tint = CyanGlow) },
                     modifier = Modifier.clickable(onClick = onTakePhoto)
                 )
                 ListItem(
-                    headlineContent = { Text("Add Files") },
-                    leadingContent = { Icon(Icons.Default.Description, null) },
+                    headlineContent = { Text("Add Files", color = TextPrimary) },
+                    leadingContent = { Icon(Icons.Default.Description, null, tint = CyanGlow) },
                     modifier = Modifier.clickable(onClick = onAddFiles)
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = CyanGlow)
+            ) {
                 Text("Cancel")
             }
         },
-        containerColor = Color(0xFF1C1C1E)
+        containerColor = Surface15,
+        titleContentColor = TextPrimary,
+        textContentColor = TextSecondary
     )
 }
 
@@ -1063,24 +1099,29 @@ private fun ItemOptionsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(item.originalName) },
+        title = { Text(item.originalName, color = TextPrimary) },
         text = {
             Column {
                 ListItem(
-                    headlineContent = { Text("Delete") },
-                    leadingContent = { Icon(Icons.Default.Delete, null, tint = Color(0xFFFF453A)) },
+                    headlineContent = { Text("Delete", color = CrimsonSecurity) },
+                    leadingContent = { Icon(Icons.Default.Delete, null, tint = CrimsonSecurity) },
                     colors = ListItemDefaults.colors(
-                        headlineColor = Color(0xFFFF453A)
+                        headlineColor = CrimsonSecurity
                     ),
                     modifier = Modifier.clickable(onClick = onDelete)
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = CyanGlow)
+            ) {
                 Text("Cancel")
             }
         },
-        containerColor = Color(0xFF1C1C1E)
+        containerColor = Surface15,
+        titleContentColor = TextPrimary,
+        textContentColor = TextSecondary
     )
 }

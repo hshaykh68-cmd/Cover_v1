@@ -1,6 +1,6 @@
 package com.cover.app.core.theme
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -44,7 +45,9 @@ fun Modifier.neumorphic(
     elevation: Dp = 8.dp,
     pressed: Boolean = false,
     shadowColor: Color = VoidBlack,
-    highlightColor: Color = Surface40
+    highlightColor: Color = Surface40,
+    backgroundColor: Color = Surface15,
+    pressedBackgroundColor: Color = Surface20
 ): Modifier = composed {
     val density = LocalDensity.current
     val elevationPx = with(density) { elevation.toPx() }
@@ -83,7 +86,7 @@ fun Modifier.neumorphic(
             }
         }
         .background(
-            color = if (pressed) Surface20 else Surface15,
+            color = if (pressed) pressedBackgroundColor else backgroundColor,
             shape = shape
         )
 }
@@ -94,7 +97,11 @@ fun Modifier.neumorphic(
 fun Modifier.neumorphicButton(
     onClick: () -> Unit,
     shape: Shape = RoundedCornerShape(50), // Circular for calculator
-    elevation: Dp = 12.dp
+    elevation: Dp = 12.dp,
+    backgroundColor: Color = Surface15,
+    pressedBackgroundColor: Color = Surface20,
+    shadowColor: Color = VoidBlack,
+    highlightColor: Color = Surface40
 ): Modifier = composed {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -109,7 +116,11 @@ fun Modifier.neumorphicButton(
         .neumorphic(
             shape = shape,
             elevation = elevation,
-            pressed = isPressed
+            pressed = isPressed,
+            shadowColor = shadowColor,
+            highlightColor = highlightColor,
+            backgroundColor = backgroundColor,
+            pressedBackgroundColor = pressedBackgroundColor
         )
         .clickable(
             interactionSource = interactionSource,
@@ -199,10 +210,11 @@ fun Modifier.gradientGlow(
             start = Offset(0f, 0f),
             end = Offset(size.width, size.height)
         )
+        // Draw only the border using Stroke style
         drawRect(
             brush = brush,
             size = size,
-            alpha = 0.8f
+            style = Stroke(width = widthPx)
         )
     }
 }
@@ -212,14 +224,45 @@ fun Modifier.gradientGlow(
 // ============================================
 
 /**
- * Shimmer loading effect modifier
+ * Shimmer loading effect modifier with animated gradient
  */
 fun Modifier.shimmer(
     shimmerColor: Color = CyanGlow.copy(alpha = 0.3f),
-    baseColor: Color = Surface10
+    baseColor: Color = Surface10,
+    animationDuration: Int = 1500
 ): Modifier = composed {
-    // Placeholder - full shimmer implementation needs animation state
-    this.background(baseColor)
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnimation by infiniteTransition.animateFloat(
+        initialValue = -2f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(animationDuration, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_translate"
+    )
+    
+    this.drawBehind {
+        // Base background
+        drawRect(color = baseColor)
+        
+        // Calculate shimmer offset based on animation
+        val shimmerWidth = size.width * 0.5f
+        val startX = size.width * translateAnimation
+        
+        // Shimmer gradient
+        val brush = Brush.linearGradient(
+            colors = listOf(
+                baseColor,
+                shimmerColor,
+                baseColor
+            ),
+            start = Offset(startX, 0f),
+            end = Offset(startX + shimmerWidth, size.height)
+        )
+        
+        drawRect(brush = brush)
+    }
 }
 
 // ============================================

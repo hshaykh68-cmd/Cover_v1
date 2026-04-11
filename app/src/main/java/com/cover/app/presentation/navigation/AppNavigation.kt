@@ -7,9 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
+import com.cover.app.domain.model.HiddenItem
 import com.cover.app.presentation.calculator.CalculatorScreen
 import com.cover.app.presentation.components.BottomNavBar
 import com.cover.app.presentation.gallery.GalleryScreen
@@ -19,6 +22,7 @@ import com.cover.app.presentation.onboarding.OnboardingViewModel
 import com.cover.app.presentation.premium.PremiumScreen
 import com.cover.app.presentation.settings.SettingsScreen
 import com.cover.app.presentation.vault.VaultScreen
+import com.cover.app.presentation.viewer.MediaViewerScreen
 
 @Composable
 fun AppNavigation(
@@ -111,6 +115,10 @@ fun AppNavigation(
                     },
                     onNavigateToUpgrade = {
                         navController.navigate(Screen.Upgrade.route)
+                    },
+                    onOpenItem = { item, items ->
+                        val index = items.indexOf(item)
+                        navController.navigate(Screen.MediaViewer.createRoute(item.id, index))
                     }
                 )
             }
@@ -163,32 +171,23 @@ fun AppNavigation(
                 )
             }
             
-            // Legacy routes for backward compatibility
-            composable(Screen.Vault.route) { backStackEntry ->
-                val vaultId = backStackEntry.arguments?.getString("vaultId") ?: ""
-                VaultScreen(
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    },
-                    onNavigateToSettings = {
-                        navController.navigate(Screen.Settings.route)
-                    },
-                    onNavigateToUpgrade = {
-                        navController.navigate(Screen.Upgrade.route)
-                    }
+            // Media Viewer
+            composable(
+                route = Screen.MediaViewer.route,
+                arguments = listOf(
+                    navArgument("itemId") { type = NavType.StringType },
+                    navArgument("initialIndex") { type = NavType.IntType }
                 )
-            }
-            
-            composable(Screen.LegacyGallery.route) { backStackEntry ->
-                val vaultId = backStackEntry.arguments?.getString("vaultId") ?: ""
-                GalleryScreen(
-                    vaultId = vaultId,
+            ) { backStackEntry ->
+                val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
+                
+                MediaViewerScreen(
+                    initialIndex = initialIndex,
                     onNavigateBack = {
                         navController.popBackStack()
                     },
-                    onNavigateToUpgrade = {
-                        navController.navigate(Screen.Upgrade.route)
-                    }
+                    onDeleteItem = { },
+                    onExportItem = { }
                 )
             }
         }

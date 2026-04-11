@@ -1,14 +1,10 @@
 package com.cover.app.core.animation
 
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.repeatable
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 /**
  * STEALTH LUXURY ANIMATION SYSTEM
@@ -131,3 +127,56 @@ object AnimationSpecs {
 }
 
 private val LinearEasing = androidx.compose.animation.core.LinearEasing
+
+// ============================================
+// LIFECYCLE-AWARE ANIMATION HELPERS
+// ============================================
+
+/**
+ * Creates a lifecycle-aware infinite transition that pauses when the screen is not visible.
+ * This prevents battery drain from animations running on hidden screens.
+ */
+@Composable
+fun rememberLifecycleAwareInfiniteTransition(label: String): InfiniteTransition {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isActive by remember { mutableStateOf(true) }
+    
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> isActive = true
+                Lifecycle.Event.ON_STOP -> isActive = false
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
+    return rememberInfiniteTransition(label = label)
+}
+
+/**
+ * Animates a float value with lifecycle awareness - only runs when lifecycle is at least STARTED.
+ */
+@Composable
+fun InfiniteTransition.animateFloatLifecycleAware(
+    initialValue: Float,
+    targetValue: Float,
+    animationSpec: InfiniteRepeatableSpec<Float>,
+    label: String,
+    isActive: Boolean = true
+): State<Float> {
+    return if (isActive) {
+        animateFloat(
+            initialValue = initialValue,
+            targetValue = targetValue,
+            animationSpec = animationSpec,
+            label = label
+        )
+    } else {
+        remember { mutableFloatStateOf(initialValue) }
+    }
+}

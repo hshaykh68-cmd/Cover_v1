@@ -10,17 +10,9 @@ sealed class Screen(val route: String) {
     object IntruderLogs : Screen("intruder_logs")
     object Settings : Screen("settings")
     
-    // Legacy routes (for navigation from calculator)
-    object Vault : Screen("vault/{vaultId}") {
-        fun createRoute(vaultId: String) = "vault/$vaultId"
-    }
-    object LegacyGallery : Screen("gallery/{vaultId}") {
-        fun createRoute(vaultId: String) = "gallery/$vaultId"
-    }
-    
     // Detail screens
     object Upgrade : Screen("upgrade")
-    object MediaViewer : Screen("media_viewer/{itemId}") {
-        fun createRoute(itemId: String) = "media_viewer/$itemId"
+    object MediaViewer : Screen("media_viewer/{itemId}?initialIndex={initialIndex}") {
+        fun createRoute(itemId: String, initialIndex: Int = 0) = "media_viewer/$itemId?initialIndex=$initialIndex"
     }
 }
