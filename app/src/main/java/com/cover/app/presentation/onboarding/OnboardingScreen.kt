@@ -21,6 +21,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -186,7 +190,7 @@ private fun WelcomeStep(
         initialValue = 0.2f,
         targetValue = 0.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = EaseInOutSine),
+            animation = tween(1500, easing = AnimationSpecs.EASE_IN_OUT_SINE),
             repeatMode = RepeatMode.Reverse
         ),
         label = "shield_glow"
@@ -195,7 +199,7 @@ private fun WelcomeStep(
         initialValue = 1f,
         targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = EaseInOutSine),
+            animation = tween(1500, easing = AnimationSpecs.EASE_IN_OUT_SINE),
             repeatMode = RepeatMode.Reverse
         ),
         label = "shield_scale"
@@ -467,7 +471,7 @@ private fun CompleteStep(
         initialValue = 0.2f,
         targetValue = 0.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = EaseInOutSine),
+            animation = tween(1500, easing = AnimationSpecs.EASE_IN_OUT_SINE),
             repeatMode = RepeatMode.Reverse
         ),
         label = "complete_glow"

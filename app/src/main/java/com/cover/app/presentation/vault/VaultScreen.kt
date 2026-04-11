@@ -17,39 +17,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Adb
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.offset
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cover.app.core.animation.AnimationSpecs
@@ -251,7 +241,7 @@ fun VaultScreen(
                             initialValue = 0.2f,
                             targetValue = 0.5f,
                             animationSpec = infiniteRepeatable(
-                                animation = tween(1000, easing = EaseInOutSine),
+                                animation = tween(1000, easing = AnimationSpecs.EASE_IN_OUT_SINE),
                                 repeatMode = RepeatMode.Reverse
                             ),
                             label = "glow"
@@ -454,7 +444,7 @@ private fun StorageIndicator(
     // Animated progress
     val animatedProgress by animateFloatAsState(
         targetValue = usedPercent,
-        animationSpec = tween(1000, easing = EaseOutCubic),
+        animationSpec = tween(1000, easing = AnimationSpecs.EASE_OUT_QUART),
         label = "progress"
     )
 
@@ -745,7 +735,7 @@ private fun EmptyVaultStateWithActions(
         initialValue = 0.1f,
         targetValue = 0.25f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutSine),
+            animation = tween(2000, easing = AnimationSpecs.EASE_IN_OUT_SINE),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow_pulse"
@@ -914,7 +904,7 @@ private fun EmptyVaultState(
         initialValue = 0.1f,
         targetValue = 0.25f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutSine),
+            animation = tween(2000, easing = AnimationSpecs.EASE_IN_OUT_SINE),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow_pulse"

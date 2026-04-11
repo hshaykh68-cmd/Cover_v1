@@ -12,6 +12,21 @@ import androidx.lifecycle.LifecycleEventObserver
  */
 
 object AnimationSpecs {
+    // Transition Durations
+    const val CALCULATOR_TO_VAULT_DURATION_MS = 300
+    const val IMPORT_PROGRESS_DURATION_MS = 400
+    const val PREMIUM_UNLOCK_DURATION_MS = 800
+    const val ITEM_FADE_DURATION_MS = 200
+    const val BUTTON_PRESS_DURATION_MS = 100
+    const val DIALOG_ENTER_DURATION_MS = 250
+    const val DIALOG_EXIT_DURATION_MS = 200
+    
+    // Easing Curves
+    val EASE_OUT_QUART = androidx.compose.animation.core.FastOutSlowInEasing
+    val EASE_IN_OUT_CUBIC = androidx.compose.animation.core.FastOutSlowInEasing
+    val EASE_IN_OUT_SINE = androidx.compose.animation.core.CubicBezierEasing(0.445f, 0.05f, 0.55f, 0.95f)
+    val SPRING_STIFFNESS = Spring.StiffnessMedium
+    val SPRING_DAMPING = Spring.DampingRatioMediumBouncy
 
     // ============================================
     // SPRING PHYSICS - For tactile interactions

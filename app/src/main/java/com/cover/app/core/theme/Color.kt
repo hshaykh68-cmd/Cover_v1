@@ -25,6 +25,7 @@ val AmberAlert = Color(0xFFFFB800)
 val AmberSoft = Color(0x66FFB800)
 val CrimsonSecurity = Color(0xFFFF2D55)
 val EmeraldSuccess = Color(0xFF30D158)
+val GoldPremium = Color(0xFFFFD700)
 
 // Gradient Colors
 val GradientStart = Color(0xFF001a33)

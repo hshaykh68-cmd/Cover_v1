@@ -89,7 +89,7 @@ class VaultViewModel @Inject constructor(
         viewModelScope.launch {
             val pin = sessionManager.getPin() ?: return@launch
             val vault = vaultDao.getVaultById(vaultId) ?: return@launch
-            val salt = vault.salt.toByteArray()
+            val salt = vault.salt
             
             items.forEach { item ->
                 when (item) {
@@ -137,7 +137,7 @@ class VaultViewModel @Inject constructor(
         viewModelScope.launch {
             val pin = sessionManager.getPin() ?: return@launch
             val vault = vaultDao.getVaultById(vaultId) ?: return@launch
-            val salt = vault.salt.toByteArray()
+            val salt = vault.salt
             
             when (item) {
                 is HiddenItem.Photo -> {

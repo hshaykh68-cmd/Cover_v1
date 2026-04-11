@@ -12,6 +12,8 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.SharedPreferences
+import kotlin.getValue
 
 @Singleton
 class EncryptionManager @Inject constructor(
@@ -30,8 +32,8 @@ class EncryptionManager @Inject constructor(
         private const val SALT_LENGTH = 16
     }
 
-    private val masterKey by lazy { getOrCreateMasterKey() }
-    private val encryptedPrefs by lazy { createEncryptedSharedPreferences() }
+    private val masterKey: MasterKey by lazy { getOrCreateMasterKey() }
+    private val encryptedPrefs: SharedPreferences by lazy { createEncryptedSharedPreferences() }
 
     /**
      * Get or create the hardware-backed master key from Android Keystore
@@ -55,14 +57,14 @@ class EncryptionManager @Inject constructor(
     /**
      * Create encrypted shared preferences for storing sensitive metadata
      */
-    private fun createEncryptedSharedPreferences(): EncryptedSharedPreferences {
+    private fun createEncryptedSharedPreferences(): SharedPreferences {
         return EncryptedSharedPreferences.create(
             context,
             PREFS_FILE,
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        ) as EncryptedSharedPreferences
+        )
     }
 
     /**
@@ -211,7 +213,7 @@ class EncryptionManager @Inject constructor(
     /**
      * Retrieve a long
      */
-    fun retrieveSecureLong(key: String, default: Long = 0): Long {
+    fun retrieveSecureLong(key: String, default: Long = 0L): Long {
         return encryptedPrefs.getLong(key, default)
     }
 

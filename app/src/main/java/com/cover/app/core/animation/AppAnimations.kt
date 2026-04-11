@@ -18,21 +18,6 @@ import kotlinx.coroutines.delay
  * Animation specifications for Phase 8 UI/UX Polish
  * All durations configurable via Remote Config
  */
-object AnimationSpecs {
-    const val CALCULATOR_TO_VAULT_DURATION_MS = 300
-    const val IMPORT_PROGRESS_DURATION_MS = 400
-    const val PREMIUM_UNLOCK_DURATION_MS = 800
-    const val ITEM_FADE_DURATION_MS = 200
-    const val BUTTON_PRESS_DURATION_MS = 100
-    const val DIALOG_ENTER_DURATION_MS = 250
-    const val DIALOG_EXIT_DURATION_MS = 200
-    
-    // Easing curves
-    val EASE_OUT_QUART = androidx.compose.animation.core.FastOutSlowInEasing
-    val EASE_IN_OUT_CUBIC = androidx.compose.animation.core.FastOutSlowInEasing
-    val SPRING_STIFFNESS = Spring.StiffnessMedium
-    val SPRING_DAMPING = Spring.DampingRatioMediumBouncy
-}
 
 /**
  * Calculator to Vault transition animation

@@ -27,11 +27,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cover.app.core.theme.*
 import com.cover.app.domain.model.IntruderLog
 import com.cover.app.presentation.components.CoachMarkOverlay
+import com.cover.app.presentation.components.NeumorphicIconButton
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -376,7 +378,7 @@ private fun EmptyLogsState(modifier: Modifier = Modifier) {
         initialValue = 0.15f,
         targetValue = 0.4f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutSine),
+            animation = tween(2000, easing = AnimationSpecs.EASE_IN_OUT_SINE),
             repeatMode = RepeatMode.Reverse
         ),
         label = "shield_glow"
